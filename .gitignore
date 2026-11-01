@@ -1,0 +1,63 @@
+# --- secrets / local config (security.md §6) ---------------------------------
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.pem
+*.key
+*.p12
+
+# --- temp workspace data: user documents must never be committed -------------
+.data/
+workspaces/
+work/
+backend/.data/
+
+# --- Python ------------------------------------------------------------------
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+build/
+dist/
+
+# --- coverage / test output --------------------------------------------------
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+coverage/
+junit*.xml
+test-results/
+playwright-report/
+blob-report/
+
+# --- Node / Next.js ----------------------------------------------------------
+node_modules/
+.next/
+out/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+
+# --- editors / OS ------------------------------------------------------------
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# --- Claude Code local settings ----------------------------------------------
+.claude/settings.local.json
+
+# --- local tool output ------------------------------------------------------
+.playwright-mcp/
+
+# --- archives (GitHub rejects files over 100 MB) -----------------------------
+*.zip

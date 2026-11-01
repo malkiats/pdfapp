@@ -1,0 +1,91 @@
+[project]
+name = "doc-tools-backend"
+version = "0.1.0"
+description = "Privacy-first document tools API, workers and sweeper (FastAPI + RQ)."
+requires-python = ">=3.12"
+dependencies = [
+    "anyio>=4.6",
+    "fastapi>=0.115",
+    "jsonschema>=4.23",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "redis>=5.2",
+    "rq>=3.0",
+    "structlog>=24.4",
+    "uvicorn[standard]>=0.32",
+    # PDF tools
+    "pypdf>=5.0",
+    "pikepdf>=9.0",
+    "pdfplumber>=0.11",
+    "pypdfium2>=4.30",
+    # Image tools
+    "Pillow>=10.0",
+]
+
+[dependency-groups]
+dev = [
+    "datamodel-code-generator==0.87.0",
+    "fakeredis[lua]>=2.40.0",
+    "httpx>=0.28.1",
+    "mypy>=2.4.1",
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.1",
+    "pytest-cov>=7.1.0",
+    "pyyaml>=6.0.3",
+    "ruff>=0.17.3",
+    "types-jsonschema>=4.26.0.20261006",
+    "types-pyyaml>=6.0.12.20261030",
+]
+
+[tool.uv]
+package = false
+
+# Vercel deployment (Root Directory = backend). See infrastructure/deployment/VERCEL.md.
+[tool.vercel]
+entrypoint = "server:app"
+
+[tool.vercel.scripts]
+build = "python scripts/vercel_build.py"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["app/schemas/generated"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF", "ASYNC", "PT", "N", "TID", "BLE"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S108", "S311", "BLE001"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"tempfile".msg = "Workspace files go through app.storage.TempFileManager (ADR-0002)."
+"boto3".msg = "Storage SDKs are only allowed inside app/storage (ADR-0002)."
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+strict = true
+warn_unreachable = true
+files = ["app"]
+exclude = ["app/schemas/generated/"]
+
+[[tool.mypy.overrides]]
+module = ["app.schemas.generated.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["rq", "rq.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-ra --strict-markers"
+filterwarnings = ["error::pytest.PytestUnraisableExceptionWarning"]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/schemas/generated/*"]

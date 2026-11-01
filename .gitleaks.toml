@@ -1,0 +1,20 @@
+# gitleaks config: default rules plus narrowly scoped, reviewed allowlists.
+# Loaded automatically from the repo root by `gitleaks git` / `gitleaks dir`.
+title = "doctools gitleaks config"
+
+[extend]
+useDefault = true
+
+# The frozen API contract documents example `job_token` values (fake, 256-bit
+# shaped) and the generated frontend types copy them. Only lines that contain
+# `job_token` in exactly these two files are allowed; every other finding in
+# those files still fails.
+[[allowlists]]
+description = "Example job_token values in the API contract and generated types"
+condition = "AND"
+paths = [
+  '''(^|/)shared/openapi\.yaml$''',
+  '''(^|/)frontend/src/lib/api/schema\.d\.ts$''',
+]
+regexTarget = "line"
+regexes = ['''job_token''']

@@ -1,0 +1,66 @@
+# Dependency updates (security.md §6). Weekly, grouped to keep PR noise low.
+# Security updates are opened regardless of schedule (repo setting).
+version: 2
+updates:
+  # Backend: uv project (pyproject.toml + uv.lock)
+  - package-ecosystem: uv
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    labels: [dependencies, backend]
+    groups:
+      backend-dev:
+        dependency-type: development
+        update-types: [minor, patch]
+      backend-runtime:
+        dependency-type: production
+        update-types: [patch]
+
+  # Frontend: npm (package.json + package-lock.json)
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    labels: [dependencies, frontend]
+    groups:
+      frontend-dev:
+        dependency-type: development
+        update-types: [minor, patch]
+      frontend-runtime:
+        dependency-type: production
+        update-types: [patch]
+
+  # Base images (python, uv) pinned by tag@digest
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+    labels: [dependencies, docker]
+
+  # Dev-only frontend image
+  - package-ecosystem: docker
+    directory: /infrastructure/docker
+    schedule:
+      interval: weekly
+    labels: [dependencies, docker]
+
+  # compose.yaml images (valkey, postgres, prism)
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [dependencies, docker]
+
+  # GitHub Actions pinned by SHA
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [dependencies, ci]
+    groups:
+      actions:
+        patterns: ["*"]

@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+/* Class-based dark mode, driven by next-themes (attribute="class"). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens. Text/background pairs meet WCAG AA (most AAA) in both themes:
+ * fg/bg > 15:1, muted/bg > 7:1, accent/bg > 4.5:1, accent-fg/accent > 4.5:1.
+ */
+:root {
+  --bg: #ffffff;
+  --surface: #f8fafc;
+  --surface-strong: #f1f5f9;
+  --fg: #0f172a;
+  --muted: #475569;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --accent: #1d4ed8;
+  --accent-hover: #1e40af;
+  --accent-fg: #ffffff;
+  --accent-soft: #eff6ff;
+  --accent-soft-fg: #1e3a8a;
+  --ring: #2563eb;
+  --success: #15803d;
+  --success-soft: #f0fdf4;
+  --danger: #b91c1c;
+  --danger-soft: #fef2f2;
+  --warning: #92400e;
+  --warning-soft: #fffbeb;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #0b1120;
+  --surface: #111827;
+  --surface-strong: #1e293b;
+  --fg: #f1f5f9;
+  --muted: #a3b1c6;
+  --border: #1f2a3c;
+  --border-strong: #334155;
+  --accent: #60a5fa;
+  --accent-hover: #93c5fd;
+  --accent-fg: #0b1120;
+  --accent-soft: #172554;
+  --accent-soft-fg: #dbeafe;
+  --ring: #93c5fd;
+  --success: #4ade80;
+  --success-soft: #052e16;
+  --danger: #fca5a5;
+  --danger-soft: #450a0a;
+  --warning: #fcd34d;
+  --warning-soft: #422006;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-soft-fg: var(--accent-soft-fg);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
+    sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-padding-top: 5rem;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    text-rendering: optimizeLegibility;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  summary {
+    cursor: pointer;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  dialog::backdrop {
+    background: rgb(15 23 42 / 0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,12 @@
+var/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+__pycache__/
+.env
+# copied from ../shared by scripts/vercel_build.py
+shared/
+.vercel/

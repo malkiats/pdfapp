@@ -1,0 +1,10 @@
+# Reviewed exceptions to the strict ruleset in redocly.yaml. Each entry is one
+# exact location; anything new fails lint until it is reviewed and added here.
+shared/openapi.yaml:
+  # The local-development server entry (http://localhost:8000) is intentional.
+  no-server-example.com:
+    - '#/servers/1/url'
+  # Liveness/readiness probes are unauthenticated and have no client errors.
+  operation-4xx-response:
+    - '#/paths/~1health/get/responses'
+    - '#/paths/~1ready/get/responses'

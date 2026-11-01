@@ -1,0 +1,2005 @@
+{
+  "schema_version": 1,
+  "tools": [
+    {
+      "slug": "merge-pdf",
+      "category": "organize",
+      "title": "Merge PDF",
+      "description": "Combine several PDF files into one document, in the order you choose.",
+      "icon": "combine",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 2,
+      "max_inputs": 20,
+      "options_schema": "OptionsMerge",
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 2,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Merge PDF files online, without keeping them",
+        "description": "Combine PDF files into one in seconds. Your files are deleted automatically after you download the result.",
+        "keywords": [
+          "merge pdf",
+          "combine pdf",
+          "join pdf files",
+          "merge pdf online free",
+          "pdf merger"
+        ],
+        "faq": [
+          {
+            "question": "Can I choose the page order?",
+            "answer": "Yes. Drag the files into the order you want before merging. The pages of each file stay in their original order."
+          },
+          {
+            "question": "Are bookmarks kept?",
+            "answer": "By default each source document's bookmarks (outline) are kept in the merged file. You can turn this off."
+          },
+          {
+            "question": "Do I need an account?",
+            "answer": "No. You can use this tool without signing up, within the free plan limits."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "split-pdf",
+      "category": "organize",
+      "title": "Split PDF",
+      "description": "Split a PDF into several files by page ranges or into equal parts.",
+      "icon": "scissors",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": "OptionsSplit",
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 2,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Split PDF online: by page ranges or every N pages",
+        "description": "Split a PDF into separate files by page range or into equal parts. Download them as one ZIP; files are deleted automatically.",
+        "keywords": [
+          "split pdf",
+          "separate pdf pages",
+          "split pdf online",
+          "divide pdf",
+          "pdf splitter"
+        ],
+        "faq": [
+          {
+            "question": "How do I get the split files?",
+            "answer": "All parts are packed into a single ZIP file that you download once."
+          },
+          {
+            "question": "Can I split every few pages?",
+            "answer": "Yes. Choose a page count and the document is cut into parts of that many pages each, or enter your own ranges such as 1-3,5,8-10."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "remove-pages",
+      "category": "organize",
+      "title": "Remove pages",
+      "description": "Delete the pages you do not need from a PDF and keep the rest.",
+      "icon": "file-minus",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 2,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Remove pages from a PDF online",
+        "description": "Delete unwanted pages from a PDF in a few clicks. Keep the rest in their original order; files are deleted after download.",
+        "keywords": [
+          "remove pages from pdf",
+          "delete pdf pages",
+          "pdf page remover",
+          "remove pdf page online"
+        ],
+        "faq": [
+          {
+            "question": "Does removing pages change the quality of the rest?",
+            "answer": "No. The remaining pages are copied as they are, without re-compressing images or text."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "extract-pages",
+      "category": "organize",
+      "title": "Extract pages",
+      "description": "Pull selected pages out of a PDF into a new, smaller document.",
+      "icon": "file-output",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 2,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Extract pages from a PDF into a new file",
+        "description": "Select the pages you need and save them as a new PDF. Quick, free and private: files are deleted automatically.",
+        "keywords": [
+          "extract pages from pdf",
+          "save pdf pages",
+          "pdf page extractor",
+          "copy pages from pdf"
+        ],
+        "faq": [
+          {
+            "question": "Is the original PDF changed?",
+            "answer": "No. A new PDF is created from the pages you select. Your original file on your device is never modified."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "organize-pdf",
+      "category": "organize",
+      "title": "Organize PDF",
+      "description": "Reorder, duplicate or delete pages of a PDF with a visual page view.",
+      "icon": "layout-grid",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": "OptionsOrganize",
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 2,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Organize PDF pages: reorder, delete and duplicate",
+        "description": "Rearrange PDF pages by dragging them, remove the ones you do not need and duplicate others. Private, with automatic file deletion.",
+        "keywords": [
+          "organize pdf",
+          "reorder pdf pages",
+          "rearrange pdf",
+          "sort pdf pages",
+          "move pdf pages"
+        ],
+        "faq": [
+          {
+            "question": "Can I duplicate a page?",
+            "answer": "Yes. Any page listed twice in the new order appears twice in the result."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "scan-to-pdf",
+      "category": "organize",
+      "title": "Scan to PDF",
+      "description": "Turn photos of paper documents into a clean, multi-page PDF.",
+      "icon": "scan",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/tiff"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 20,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 3,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Scan to PDF: turn document photos into a PDF",
+        "description": "Convert photos or scans of paper documents into a single PDF, page by page. No app to install; images are deleted after download.",
+        "keywords": [
+          "scan to pdf",
+          "photo to pdf",
+          "document scanner online",
+          "scan documents to pdf"
+        ],
+        "faq": [
+          {
+            "question": "Do I need a scanner?",
+            "answer": "No. Photos taken with your phone work. For the best result, photograph each page flat and in good light."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "compress-pdf",
+      "category": "optimize",
+      "title": "Compress PDF",
+      "description": "Reduce the file size of a PDF while keeping it readable and printable.",
+      "icon": "minimize-2",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": "OptionsCompress",
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 2,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Compress PDF: reduce PDF file size online",
+        "description": "Make PDFs smaller for email and uploads. Choose low, medium or high compression; files are deleted automatically after download.",
+        "keywords": [
+          "compress pdf",
+          "reduce pdf size",
+          "shrink pdf",
+          "pdf compressor",
+          "make pdf smaller"
+        ],
+        "faq": [
+          {
+            "question": "How much smaller will my PDF get?",
+            "answer": "It depends on the content. PDFs with large images usually shrink the most; text-only PDFs are often already compact."
+          },
+          {
+            "question": "Will compression lower the quality?",
+            "answer": "Low compression keeps quality nearly unchanged. High compression reduces image resolution further to save more space."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "repair-pdf",
+      "category": "optimize",
+      "title": "Repair PDF",
+      "description": "Try to recover a damaged or corrupted PDF so it opens again.",
+      "icon": "wrench",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 2,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Repair PDF: fix damaged or corrupted PDF files",
+        "description": "Recover PDFs that will not open or show errors by rebuilding their internal structure. Free, private, with automatic deletion.",
+        "keywords": [
+          "repair pdf",
+          "fix corrupted pdf",
+          "recover pdf",
+          "pdf repair tool",
+          "damaged pdf"
+        ],
+        "faq": [
+          {
+            "question": "Can every PDF be repaired?",
+            "answer": "No. We rebuild the file structure and recover what is readable. Severely truncated or encrypted-and-damaged files may not be recoverable."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "ocr-pdf",
+      "category": "optimize",
+      "title": "OCR PDF",
+      "description": "Make scanned PDFs searchable and selectable by adding a text layer.",
+      "icon": "scan-text",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 3,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "OCR PDF: make scanned PDFs searchable",
+        "description": "Add a searchable, selectable text layer to scanned PDFs with on-server OCR. No AI provider involved; files are deleted after download.",
+        "keywords": [
+          "ocr pdf",
+          "searchable pdf",
+          "scanned pdf to text",
+          "pdf ocr online",
+          "make pdf searchable"
+        ],
+        "faq": [
+          {
+            "question": "Is the text recognition done by an AI service?",
+            "answer": "No. Recognition runs on our own servers with the open-source Tesseract engine. Your file is not sent to an outside AI provider."
+          },
+          {
+            "question": "Does the PDF still look the same?",
+            "answer": "Yes. The page images stay as they are; an invisible text layer is added so you can search and copy text."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "jpg-to-pdf",
+      "category": "convert-to-pdf",
+      "title": "JPG to PDF",
+      "description": "Convert JPG photos and images into a single PDF document.",
+      "icon": "image",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "image/jpeg"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 20,
+      "options_schema": "OptionsImagesToPdf",
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 2,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "JPG to PDF: convert images to PDF online",
+        "description": "Turn one or many JPG images into a PDF. Choose page size, orientation and margins; images are deleted automatically.",
+        "keywords": [
+          "jpg to pdf",
+          "jpeg to pdf",
+          "image to pdf",
+          "convert jpg to pdf",
+          "photos to pdf"
+        ],
+        "faq": [
+          {
+            "question": "Can I combine several images into one PDF?",
+            "answer": "Yes. Each image becomes one page, in the order you arrange them."
+          },
+          {
+            "question": "Do I need an account?",
+            "answer": "No. You can use this tool without signing up, within the free plan limits."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "png-to-pdf",
+      "category": "convert-to-pdf",
+      "title": "PNG to PDF",
+      "description": "Convert PNG images and screenshots into a PDF document.",
+      "icon": "image",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "image/png"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 20,
+      "options_schema": "OptionsImagesToPdf",
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 2,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "PNG to PDF: convert PNG images to PDF online",
+        "description": "Turn PNG images and screenshots into a PDF, one page per image. Free and private, with automatic file deletion.",
+        "keywords": [
+          "png to pdf",
+          "convert png to pdf",
+          "screenshot to pdf",
+          "image to pdf"
+        ],
+        "faq": [
+          {
+            "question": "Is transparency kept?",
+            "answer": "Transparent areas are placed on a white page, which is how most PDF viewers display them."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "word-to-pdf",
+      "category": "convert-to-pdf",
+      "title": "Word to PDF",
+      "description": "Convert Word documents (DOCX) into PDF with layout and fonts preserved.",
+      "icon": "file-text",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 3,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Word to PDF: convert DOCX to PDF online",
+        "description": "Convert Word documents to PDF that look the same everywhere. Macros are never run; files are deleted after download.",
+        "keywords": [
+          "word to pdf",
+          "docx to pdf",
+          "convert word to pdf",
+          "doc to pdf online"
+        ],
+        "faq": [
+          {
+            "question": "Which Word formats are supported?",
+            "answer": "Modern .docx files. Macro-enabled (.docm) and legacy binary (.doc) files are not accepted, for security reasons."
+          },
+          {
+            "question": "Will my fonts look the same?",
+            "answer": "Common fonts convert faithfully. Rare fonts that are not embedded in the document may be replaced by a similar font."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "powerpoint-to-pdf",
+      "category": "convert-to-pdf",
+      "title": "PowerPoint to PDF",
+      "description": "Convert PowerPoint presentations (PPTX) into PDF slides.",
+      "icon": "presentation",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 3,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "PowerPoint to PDF: convert PPTX slides to PDF",
+        "description": "Turn PowerPoint presentations into PDF for easy sharing and printing. Macros never run; files are deleted automatically.",
+        "keywords": [
+          "powerpoint to pdf",
+          "pptx to pdf",
+          "ppt to pdf",
+          "convert slides to pdf"
+        ],
+        "faq": [
+          {
+            "question": "Are animations kept?",
+            "answer": "No. A PDF is static, so each slide becomes one page in its final state."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "excel-to-pdf",
+      "category": "convert-to-pdf",
+      "title": "Excel to PDF",
+      "description": "Convert Excel spreadsheets (XLSX) into a printable PDF.",
+      "icon": "sheet",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 3,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Excel to PDF: convert XLSX spreadsheets to PDF",
+        "description": "Turn Excel workbooks into clean, printable PDFs. Macros never run; your spreadsheet is deleted after download.",
+        "keywords": [
+          "excel to pdf",
+          "xlsx to pdf",
+          "spreadsheet to pdf",
+          "convert excel to pdf"
+        ],
+        "faq": [
+          {
+            "question": "How are wide sheets handled?",
+            "answer": "The print area and page setup saved in the workbook are used. Very wide sheets may span several pages."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "html-to-pdf",
+      "category": "convert-to-pdf",
+      "title": "HTML to PDF",
+      "description": "Convert an HTML file into a PDF document, without running its scripts.",
+      "icon": "code",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "text/html"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 3,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "HTML to PDF: convert HTML files to PDF online",
+        "description": "Convert an HTML file to a PDF with its styles applied. Scripts are not executed; files are deleted after download.",
+        "keywords": [
+          "html to pdf",
+          "convert html to pdf",
+          "web page to pdf",
+          "html file to pdf"
+        ],
+        "faq": [
+          {
+            "question": "Is JavaScript executed?",
+            "answer": "No. The page is rendered from its HTML and CSS only, so content built by scripts will not appear."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "pdf-to-jpg",
+      "category": "convert-from-pdf",
+      "title": "PDF to JPG",
+      "description": "Convert each PDF page into a JPG image, downloaded together as a ZIP.",
+      "icon": "file-image",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": "OptionsPdfToImages",
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 2,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "PDF to JPG: convert PDF pages to images online",
+        "description": "Save every page of a PDF as a high-quality JPG image. Choose the resolution; images arrive in one ZIP and are deleted after download.",
+        "keywords": [
+          "pdf to jpg",
+          "pdf to jpeg",
+          "convert pdf to image",
+          "pdf page to jpg"
+        ],
+        "faq": [
+          {
+            "question": "Which resolution should I choose?",
+            "answer": "150 DPI is good for screens. Choose up to 300 DPI for printing or zooming in."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "pdf-to-png",
+      "category": "convert-from-pdf",
+      "title": "PDF to PNG",
+      "description": "Convert each PDF page into a lossless PNG image, downloaded as a ZIP.",
+      "icon": "file-image",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": "OptionsPdfToImages",
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 2,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "PDF to PNG: convert PDF pages to PNG images",
+        "description": "Turn PDF pages into sharp, lossless PNG images at the resolution you choose. Free and private, with automatic deletion.",
+        "keywords": [
+          "pdf to png",
+          "convert pdf to png",
+          "pdf to image",
+          "pdf page to png"
+        ],
+        "faq": [
+          {
+            "question": "Why choose PNG over JPG?",
+            "answer": "PNG is lossless, so text and line art stay crisp. JPG files are smaller and better suited to photos."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "pdf-to-word",
+      "category": "convert-from-pdf",
+      "title": "PDF to Word",
+      "description": "Convert a PDF into an editable Word document (DOCX).",
+      "icon": "file-type",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 3,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "PDF to Word: convert PDF to editable DOCX",
+        "description": "Turn PDFs into editable Word documents. Works best on text-based PDFs; files are deleted automatically after download.",
+        "keywords": [
+          "pdf to word",
+          "pdf to docx",
+          "convert pdf to word",
+          "edit pdf in word"
+        ],
+        "faq": [
+          {
+            "question": "Will the layout be identical?",
+            "answer": "Simple layouts convert well. Complex designs with many columns, tables or floating images may need touch-ups in Word."
+          },
+          {
+            "question": "Does it work on scanned PDFs?",
+            "answer": "Scanned PDFs contain images, not text. Run OCR PDF first to get editable text."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "pdf-to-powerpoint",
+      "category": "convert-from-pdf",
+      "title": "PDF to PowerPoint",
+      "description": "Turn PDF pages into PowerPoint slides (PPTX) you can edit.",
+      "icon": "presentation",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 3,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "PDF to PowerPoint: convert PDF to PPTX slides",
+        "description": "Convert a PDF into a PowerPoint presentation, one slide per page. Private, with automatic file deletion after download.",
+        "keywords": [
+          "pdf to powerpoint",
+          "pdf to pptx",
+          "pdf to ppt",
+          "convert pdf to slides"
+        ],
+        "faq": [
+          {
+            "question": "Is every element editable?",
+            "answer": "Text boxes are editable where the PDF contains real text. Some graphics may be placed as images."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "pdf-to-excel",
+      "category": "convert-from-pdf",
+      "title": "PDF to Excel",
+      "description": "Extract tables from a PDF into an Excel spreadsheet (XLSX).",
+      "icon": "table",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 3,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "PDF to Excel: extract PDF tables to XLSX",
+        "description": "Pull tables out of PDFs into editable Excel sheets. Best on text-based PDFs; files are deleted automatically after download.",
+        "keywords": [
+          "pdf to excel",
+          "pdf to xlsx",
+          "extract tables from pdf",
+          "convert pdf to spreadsheet"
+        ],
+        "faq": [
+          {
+            "question": "How accurate is table detection?",
+            "answer": "Tables with clear rows and columns convert well. Merged cells or tables without ruling lines may need manual checks."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "pdf-to-pdfa",
+      "category": "convert-from-pdf",
+      "title": "PDF to PDF/A",
+      "description": "Convert a PDF to PDF/A for long-term archiving. Availability pending a licensing decision.",
+      "icon": "archive",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 6,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "PDF to PDF/A: convert PDFs for long-term archiving",
+        "description": "Convert PDFs to the PDF/A archival standard so they display the same for years. Coming soon; files will be deleted after download.",
+        "keywords": [
+          "pdf to pdfa",
+          "pdf/a converter",
+          "archive pdf",
+          "pdf a-2b",
+          "convert pdf to pdf/a"
+        ],
+        "faq": [
+          {
+            "question": "When will PDF to PDF/A be available?",
+            "answer": "This tool depends on a conversion engine whose licensing we are still reviewing. It stays marked as coming soon until that is settled."
+          },
+          {
+            "question": "What is PDF/A?",
+            "answer": "PDF/A is an ISO standard for archiving. It embeds fonts and forbids features such as external content, so the file renders the same in the future."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "rotate-pdf",
+      "category": "edit",
+      "title": "Rotate PDF",
+      "description": "Rotate all or selected PDF pages by 90, 180 or 270 degrees.",
+      "icon": "rotate-cw",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": "OptionsRotate",
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 2,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Rotate PDF pages online and save them",
+        "description": "Rotate every page or only the ones you pick, then save the PDF. Quick and private, with automatic file deletion.",
+        "keywords": [
+          "rotate pdf",
+          "rotate pdf pages",
+          "turn pdf page",
+          "fix pdf orientation"
+        ],
+        "faq": [
+          {
+            "question": "Is the rotation permanent?",
+            "answer": "Yes. The rotation is saved in the new PDF, so it opens the right way up in every viewer."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "add-page-numbers",
+      "category": "edit",
+      "title": "Add page numbers",
+      "description": "Add page numbers to a PDF, with your choice of position and format.",
+      "icon": "list-ordered",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 6,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Add page numbers to a PDF online",
+        "description": "Number the pages of a PDF in the header or footer, with your choice of position and starting number. Files are deleted after download.",
+        "keywords": [
+          "add page numbers to pdf",
+          "number pdf pages",
+          "pdf page numbering",
+          "insert page numbers pdf"
+        ],
+        "faq": [
+          {
+            "question": "Can I skip the cover page?",
+            "answer": "Yes. You will be able to choose the first page to number and the number to start from."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "add-watermark",
+      "category": "edit",
+      "title": "Add watermark",
+      "description": "Stamp text or an image watermark over the pages of a PDF.",
+      "icon": "stamp",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 6,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Add a watermark to a PDF: text or image",
+        "description": "Stamp a text or image watermark on PDF pages and set its position and transparency. Private, with automatic file deletion.",
+        "keywords": [
+          "watermark pdf",
+          "add watermark to pdf",
+          "stamp pdf",
+          "pdf watermark online"
+        ],
+        "faq": [
+          {
+            "question": "Can a watermark be removed later?",
+            "answer": "A watermark is added to the page content. It discourages reuse but determined users with editing tools may still remove it."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "crop-pdf",
+      "category": "edit",
+      "title": "Crop PDF",
+      "description": "Trim the margins of PDF pages or crop them to a selected area.",
+      "icon": "crop",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 6,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Crop PDF pages online: trim margins",
+        "description": "Cut white margins from PDF pages or crop them to the area you select. Free and private, with automatic file deletion.",
+        "keywords": [
+          "crop pdf",
+          "trim pdf margins",
+          "cut pdf page",
+          "pdf cropper"
+        ],
+        "faq": [
+          {
+            "question": "Is the cropped content deleted?",
+            "answer": "Cropping changes the visible area of the page. Content outside it may still exist in the file, so use Redact PDF to remove sensitive content."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "edit-pdf",
+      "category": "edit",
+      "title": "Edit PDF",
+      "description": "Add text, shapes and images to a PDF directly in your browser.",
+      "icon": "pencil",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 6,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Edit PDF online: add text, images and shapes",
+        "description": "Add text, images, highlights and shapes to your PDF, then save a new copy. Files are deleted automatically after download.",
+        "keywords": [
+          "edit pdf",
+          "pdf editor online",
+          "add text to pdf",
+          "annotate pdf",
+          "write on pdf"
+        ],
+        "faq": [
+          {
+            "question": "Can I change existing text?",
+            "answer": "The editor adds new content on top of the page. Changing the original text in place is not supported."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "pdf-forms",
+      "category": "edit",
+      "title": "Fill PDF forms",
+      "description": "Fill in interactive PDF forms and save a completed copy.",
+      "icon": "clipboard-list",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 6,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Fill PDF forms online and save the result",
+        "description": "Complete interactive PDF forms in your browser and download the filled copy. Form data is deleted with the file after download.",
+        "keywords": [
+          "fill pdf form",
+          "pdf form filler",
+          "complete pdf form online",
+          "fillable pdf"
+        ],
+        "faq": [
+          {
+            "question": "Is the information I type stored?",
+            "answer": "No. Your entries are written into the PDF you download and are deleted with the file on the usual schedule."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "unlock-pdf",
+      "category": "security",
+      "title": "Unlock PDF",
+      "description": "Remove the password from a PDF you are allowed to open.",
+      "icon": "lock-open",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 6,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Unlock PDF: remove a known PDF password",
+        "description": "Remove password protection from a PDF when you know the password. The password is used once and never stored.",
+        "keywords": [
+          "unlock pdf",
+          "remove pdf password",
+          "decrypt pdf",
+          "pdf password remover"
+        ],
+        "faq": [
+          {
+            "question": "Can you unlock a PDF without the password?",
+            "answer": "No. This tool removes protection only when you provide the correct password. We do not crack passwords."
+          },
+          {
+            "question": "Is my password stored?",
+            "answer": "No. It is used once to open the file and is never logged or saved."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "protect-pdf",
+      "category": "security",
+      "title": "Protect PDF",
+      "description": "Encrypt a PDF with a password and control printing and copying.",
+      "icon": "lock",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 6,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Protect PDF with a password: encrypt PDF files",
+        "description": "Add a password and AES encryption to a PDF, with optional limits on printing and copying. The password is never stored.",
+        "keywords": [
+          "protect pdf",
+          "password protect pdf",
+          "encrypt pdf",
+          "lock pdf",
+          "secure pdf"
+        ],
+        "faq": [
+          {
+            "question": "Can you recover my password if I forget it?",
+            "answer": "No. We never store the password, so keep it somewhere safe."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "sign-pdf",
+      "category": "security",
+      "title": "Sign PDF",
+      "description": "Add your signature to a PDF by drawing, typing or uploading it.",
+      "icon": "signature",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 6,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Sign PDF online: add your signature to a document",
+        "description": "Draw, type or upload a signature and place it on your PDF. Signatures and files are deleted automatically after download.",
+        "keywords": [
+          "sign pdf",
+          "esign pdf",
+          "add signature to pdf",
+          "electronic signature pdf"
+        ],
+        "faq": [
+          {
+            "question": "Is this a legally binding signature?",
+            "answer": "It adds a visual signature to the document. Whether that is legally sufficient depends on your country and use case, so check local requirements."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "redact-pdf",
+      "category": "security",
+      "title": "Redact PDF",
+      "description": "Permanently black out sensitive text and areas in a PDF.",
+      "icon": "eraser",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 6,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Redact PDF: permanently remove sensitive content",
+        "description": "Black out names, numbers and other sensitive details so the underlying content is removed, not just hidden. Files are deleted after download.",
+        "keywords": [
+          "redact pdf",
+          "black out pdf text",
+          "remove sensitive information pdf",
+          "pdf redaction tool"
+        ],
+        "faq": [
+          {
+            "question": "Is redacted text really removed?",
+            "answer": "Yes, that is the goal: redacted areas are removed from the page content, not covered with a box. We verify the result by checking that the text can no longer be extracted."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "compare-pdf",
+      "category": "security",
+      "title": "Compare PDF",
+      "description": "Compare two PDF versions side by side and highlight the differences.",
+      "icon": "git-compare",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 2,
+      "max_inputs": 2,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 5,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Compare PDF files: find differences between versions",
+        "description": "Upload two versions of a PDF and see added, removed and changed text highlighted. Both files are deleted automatically after use.",
+        "keywords": [
+          "compare pdf",
+          "pdf diff",
+          "compare two pdf files",
+          "find differences in pdf"
+        ],
+        "faq": [
+          {
+            "question": "Does it compare images too?",
+            "answer": "The comparison focuses on text. Changes to images or layout without text changes may not be highlighted."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "image-to-text",
+      "category": "ocr",
+      "title": "Image to text",
+      "description": "Extract text from images with on-server OCR, ready to copy.",
+      "icon": "scan-text",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/tiff"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 3,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Image to text: extract text from images online (OCR)",
+        "description": "Copy text out of JPG, PNG, WebP or TIFF images with OCR that runs on our servers, not an AI provider. Images are deleted automatically.",
+        "keywords": [
+          "image to text",
+          "ocr online",
+          "extract text from image",
+          "picture to text",
+          "photo to text"
+        ],
+        "faq": [
+          {
+            "question": "Is the text recognition done by an AI service?",
+            "answer": "No. Recognition runs on our own servers with the open-source Tesseract engine. Your file is not sent to an outside AI provider."
+          },
+          {
+            "question": "Do I need an account?",
+            "answer": "No. You can use this tool without signing up, within the free plan limits."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "jpg-to-text",
+      "category": "ocr",
+      "title": "JPG to text",
+      "description": "Extract the text from JPG photos and scans with OCR.",
+      "icon": "scan-text",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "image/jpeg"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 3,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "JPG to text: convert JPEG images to editable text",
+        "description": "Extract text from JPG photos and scans with on-server OCR. Copy or download the result; images are deleted automatically.",
+        "keywords": [
+          "jpg to text",
+          "jpeg to text",
+          "ocr jpg",
+          "extract text from jpg"
+        ],
+        "faq": [
+          {
+            "question": "Is the text recognition done by an AI service?",
+            "answer": "No. Recognition runs on our own servers with the open-source Tesseract engine. Your file is not sent to an outside AI provider."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "png-to-text",
+      "category": "ocr",
+      "title": "PNG to text",
+      "description": "Extract the text from PNG images and screenshots with OCR.",
+      "icon": "scan-text",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "image/png"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 3,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "PNG to text: extract text from PNG images",
+        "description": "Turn the text in PNG images into editable text with on-server OCR. Free and private; images are deleted automatically.",
+        "keywords": [
+          "png to text",
+          "ocr png",
+          "extract text from png",
+          "png image to text"
+        ],
+        "faq": [
+          {
+            "question": "Is the text recognition done by an AI service?",
+            "answer": "No. Recognition runs on our own servers with the open-source Tesseract engine. Your file is not sent to an outside AI provider."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "screenshot-to-text",
+      "category": "ocr",
+      "title": "Screenshot to text",
+      "description": "Copy the text out of screenshots from any app or website.",
+      "icon": "monitor",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "image/png",
+        "image/jpeg",
+        "image/webp"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 3,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Screenshot to text: copy text from screenshots",
+        "description": "Extract text from screenshots of apps, chats and web pages with on-server OCR. Screenshots are deleted automatically after use.",
+        "keywords": [
+          "screenshot to text",
+          "copy text from screenshot",
+          "screenshot ocr",
+          "extract text from screenshot"
+        ],
+        "faq": [
+          {
+            "question": "Is the text recognition done by an AI service?",
+            "answer": "No. Recognition runs on our own servers with the open-source Tesseract engine. Your file is not sent to an outside AI provider."
+          },
+          {
+            "question": "Which screenshots work best?",
+            "answer": "Uncropped, full-resolution screenshots give the most accurate text. Avoid resizing them before upload."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "scanned-document-to-text",
+      "category": "ocr",
+      "title": "Scanned document to text",
+      "description": "Convert scanned pages and PDFs into plain, editable text.",
+      "icon": "file-scan",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/tiff"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 3,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Scanned document to text: OCR for scans and PDFs",
+        "description": "Turn scanned documents and image-only PDFs into editable text with on-server OCR. Files are deleted automatically after use.",
+        "keywords": [
+          "scanned document to text",
+          "scan to text",
+          "ocr scanned pdf",
+          "convert scan to text"
+        ],
+        "faq": [
+          {
+            "question": "Is the text recognition done by an AI service?",
+            "answer": "No. Recognition runs on our own servers with the open-source Tesseract engine. Your file is not sent to an outside AI provider."
+          },
+          {
+            "question": "Is there a page limit?",
+            "answer": "Yes. The free plan processes up to 100 pages per document; paid plans allow more."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "receipt-to-text",
+      "category": "ocr",
+      "title": "Receipt to text",
+      "description": "Extract the text from photos of receipts and invoices.",
+      "icon": "receipt",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 3,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Receipt to text: extract text from receipts",
+        "description": "Get the text from receipt photos or PDF invoices with on-server OCR, ready to copy into your expenses. Files are deleted automatically.",
+        "keywords": [
+          "receipt to text",
+          "receipt ocr",
+          "scan receipt to text",
+          "invoice to text"
+        ],
+        "faq": [
+          {
+            "question": "Is the text recognition done by an AI service?",
+            "answer": "No. Recognition runs on our own servers with the open-source Tesseract engine. Your file is not sent to an outside AI provider."
+          },
+          {
+            "question": "Are totals and dates detected automatically?",
+            "answer": "The tool extracts the text as it appears on the receipt. It does not interpret fields such as totals or tax."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "handwriting-to-text",
+      "category": "ocr",
+      "title": "Handwriting to text",
+      "description": "Best-effort recognition of neat handwriting in images and scans.",
+      "icon": "pen-line",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 3,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Handwriting to text: convert handwritten notes",
+        "description": "Turn neat handwritten notes into editable text with on-server OCR. Results depend on legibility; files are deleted automatically.",
+        "keywords": [
+          "handwriting to text",
+          "handwriting ocr",
+          "convert handwritten notes to text",
+          "handwritten to digital"
+        ],
+        "faq": [
+          {
+            "question": "Is the text recognition done by an AI service?",
+            "answer": "No. Recognition runs on our own servers with the open-source Tesseract engine. Your file is not sent to an outside AI provider."
+          },
+          {
+            "question": "How accurate is handwriting recognition?",
+            "answer": "Clear, printed-style handwriting works best. Cursive or messy writing may produce errors, so always review the result."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "summarize-pdf",
+      "category": "ai",
+      "title": "Summarize PDF",
+      "description": "Get a short AI summary of a PDF document, only with your consent.",
+      "icon": "sparkles",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 5,
+      "requires_ai_consent": true,
+      "seo": {
+        "title": "Summarize PDF with AI: short summaries of long PDFs",
+        "description": "Get a concise AI summary of a long PDF. Text is sent to our AI provider only after you consent; our copies are deleted automatically.",
+        "keywords": [
+          "summarize pdf",
+          "pdf summarizer",
+          "ai pdf summary",
+          "summarize document"
+        ],
+        "faq": [
+          {
+            "question": "How long can the PDF be?",
+            "answer": "Long documents are supported within your plan's page limit. Very long documents may be summarized section by section."
+          },
+          {
+            "question": "Is my content sent to a third party?",
+            "answer": "Yes. To produce the result, the text of your input is sent to our AI provider (Groq) and only after you tick the consent box for that request. The provider's own data retention terms apply to what it receives. We do not use your content to train models, and we delete our copy of the input and result on the same schedule as every other tool."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "summarize-article",
+      "category": "ai",
+      "title": "Summarize article",
+      "description": "Summarize a web article from its link or pasted text with AI.",
+      "icon": "newspaper",
+      "input_kinds": [
+        "url",
+        "text"
+      ],
+      "accepts": [],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 5,
+      "requires_ai_consent": true,
+      "seo": {
+        "title": "Summarize an article with AI from a link or text",
+        "description": "Paste a link or the article text and get a short AI summary. Content is sent to our AI provider only with your consent.",
+        "keywords": [
+          "summarize article",
+          "article summarizer",
+          "ai summary of web page",
+          "tldr generator"
+        ],
+        "faq": [
+          {
+            "question": "Do you visit the link I paste?",
+            "answer": "Yes. Our server fetches the page on your behalf, so the website will see a request from us, not from you. Private and internal addresses are refused."
+          },
+          {
+            "question": "Is my content sent to a third party?",
+            "answer": "Yes. To produce the result, the text of your input is sent to our AI provider (Groq) and only after you tick the consent box for that request. The provider's own data retention terms apply to what it receives. We do not use your content to train models, and we delete our copy of the input and result on the same schedule as every other tool."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "translate-pdf",
+      "category": "ai",
+      "title": "Translate PDF",
+      "description": "Translate the text of a PDF into another language with AI.",
+      "icon": "languages",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 5,
+      "requires_ai_consent": true,
+      "seo": {
+        "title": "Translate PDF with AI into another language",
+        "description": "Translate the text of a PDF into another language with AI. Text is sent to our AI provider only after you consent.",
+        "keywords": [
+          "translate pdf",
+          "pdf translator",
+          "ai document translation",
+          "translate pdf online"
+        ],
+        "faq": [
+          {
+            "question": "Is the layout of the PDF kept?",
+            "answer": "The translation is delivered as text that follows the order of the document. The original page design is not reproduced."
+          },
+          {
+            "question": "Is my content sent to a third party?",
+            "answer": "Yes. To produce the result, the text of your input is sent to our AI provider (Groq) and only after you tick the consent box for that request. The provider's own data retention terms apply to what it receives. We do not use your content to train models, and we delete our copy of the input and result on the same schedule as every other tool."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "translate-text",
+      "category": "ai",
+      "title": "Translate text",
+      "description": "Translate text into another language with an AI model, only with your consent.",
+      "icon": "languages",
+      "input_kinds": [
+        "text"
+      ],
+      "accepts": [],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": "OptionsTranslateText",
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 5,
+      "requires_ai_consent": true,
+      "seo": {
+        "title": "Translate text online with AI, privately",
+        "description": "Translate text with an AI model. We ask for consent first, and our copy of your text is deleted automatically after delivery.",
+        "keywords": [
+          "translate text",
+          "ai translator",
+          "online translator",
+          "translate paragraph"
+        ],
+        "faq": [
+          {
+            "question": "Which languages are supported?",
+            "answer": "Most widely used languages. Choose the target language, and optionally the source language, or let it be detected."
+          },
+          {
+            "question": "Is my content sent to a third party?",
+            "answer": "Yes. To produce the result, the text of your input is sent to our AI provider (Groq) and only after you tick the consent box for that request. The provider's own data retention terms apply to what it receives. We do not use your content to train models, and we delete our copy of the input and result on the same schedule as every other tool."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "pdf-to-markdown",
+      "category": "ai",
+      "title": "PDF to Markdown",
+      "description": "Convert a PDF into clean, structured Markdown with AI.",
+      "icon": "file-code",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 5,
+      "requires_ai_consent": true,
+      "seo": {
+        "title": "PDF to Markdown: convert PDFs to clean Markdown",
+        "description": "Turn PDFs into structured Markdown with headings, lists and tables, using AI. Text is sent to our AI provider only with your consent.",
+        "keywords": [
+          "pdf to markdown",
+          "convert pdf to md",
+          "pdf to markdown converter",
+          "pdf for llm"
+        ],
+        "faq": [
+          {
+            "question": "Why does this tool use AI?",
+            "answer": "The AI model rebuilds headings, lists and tables from the extracted text, which plain extraction cannot do reliably."
+          },
+          {
+            "question": "Is my content sent to a third party?",
+            "answer": "Yes. To produce the result, the text of your input is sent to our AI provider (Groq) and only after you tick the consent box for that request. The provider's own data retention terms apply to what it receives. We do not use your content to train models, and we delete our copy of the input and result on the same schedule as every other tool."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "extract-key-points",
+      "category": "ai",
+      "title": "Extract key points",
+      "description": "Pull the key points and action items out of a document or text with AI.",
+      "icon": "list-checks",
+      "input_kinds": [
+        "file",
+        "text"
+      ],
+      "accepts": [
+        "application/pdf",
+        "text/plain",
+        "text/markdown"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 5,
+      "requires_ai_consent": true,
+      "seo": {
+        "title": "Extract key points from documents with AI",
+        "description": "Get the main points and action items from a PDF or pasted text as a bullet list. Content goes to our AI provider only with your consent.",
+        "keywords": [
+          "extract key points",
+          "key takeaways generator",
+          "ai bullet point summary",
+          "action items from document"
+        ],
+        "faq": [
+          {
+            "question": "Can I paste text instead of uploading?",
+            "answer": "Yes. Paste text directly or upload a PDF, plain-text or Markdown file."
+          },
+          {
+            "question": "Is my content sent to a third party?",
+            "answer": "Yes. To produce the result, the text of your input is sent to our AI provider (Groq) and only after you tick the consent box for that request. The provider's own data retention terms apply to what it receives. We do not use your content to train models, and we delete our copy of the input and result on the same schedule as every other tool."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "ask-pdf",
+      "category": "ai",
+      "title": "Ask PDF",
+      "description": "Ask questions about a PDF and get answers based on its content.",
+      "icon": "message-circle-question",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 5,
+      "requires_ai_consent": true,
+      "seo": {
+        "title": "Ask PDF: chat with your PDF using AI",
+        "description": "Ask questions about a PDF and get answers grounded in its text. Content is sent to our AI provider only after you consent.",
+        "keywords": [
+          "ask pdf",
+          "chat with pdf",
+          "pdf question answering",
+          "ai pdf reader"
+        ],
+        "faq": [
+          {
+            "question": "Can the answers be wrong?",
+            "answer": "Yes. AI answers can contain mistakes. Check important answers against the document itself."
+          },
+          {
+            "question": "Is my content sent to a third party?",
+            "answer": "Yes. To produce the result, the text of your input is sent to our AI provider (Groq) and only after you tick the consent box for that request. The provider's own data retention terms apply to what it receives. We do not use your content to train models, and we delete our copy of the input and result on the same schedule as every other tool."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "compare-webpages",
+      "category": "compare",
+      "title": "Compare web pages",
+      "description": "Compare the text of two web pages and highlight what changed.",
+      "icon": "git-compare-arrows",
+      "input_kinds": [
+        "url"
+      ],
+      "accepts": [],
+      "min_inputs": 2,
+      "max_inputs": 2,
+      "options_schema": "OptionsCompareWebpages",
+      "tier_required": "free",
+      "status": "coming_soon",
+      "phase": 5,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Compare two web pages: find text differences",
+        "description": "Enter two links and see added, removed and changed text highlighted line by line or word by word. Fetched copies are deleted automatically.",
+        "keywords": [
+          "compare web pages",
+          "website diff",
+          "compare two urls",
+          "web page text comparison",
+          "find changes on website"
+        ],
+        "faq": [
+          {
+            "question": "Do you visit the links?",
+            "answer": "Yes. Our server fetches both pages on your behalf, so the websites see a request from us. Private and internal addresses are refused, and scripts on the pages are not run."
+          },
+          {
+            "question": "Can it compare pages that need a login?",
+            "answer": "No. Only publicly accessible pages can be compared; we never send cookies or credentials."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,2197 @@
+openapi: 3.1.0
+info:
+  title: Document Tools API
+  version: 2.0.0
+  summary: Wire contract for the privacy-first, synchronous document tools service.
+  description: |
+    FROZEN contract. Frontend and backend implement against this file in parallel.
+    A gap found by an implementer comes back to the api-designer; nobody patches
+    generated code or this file ad hoc.
+
+    **Model.** One synchronous `POST /api/v1/{tool-slug}` per tool. The request carries
+    the input (multipart files, or a JSON body for site comparison) and the response
+    carries the result in the same HTTP exchange. There are no jobs, no polling, no
+    tokens, no tickets and no presigned URLs. Nothing is stored: the input is processed
+    in memory (or a request-scoped temp dir) and discarded before the response ends.
+
+    **Auth.** None in this version (anonymous only). Adding optional authentication
+    later is an additive change (new optional security scheme and header).
+
+    **Privacy.** No response, error or log field carries a filename, document content,
+    a submitted URL or option values. Part filenames are discarded on receipt. Result
+    filenames are generated (`{tool-slug}-result.{ext}`).
+
+    **Compatibility rules (v1 path).** Additive changes are safe: new optional request
+    fields, new response fields, new enum values in response-only enums (`ToolCategory`,
+    `OutputKind`, `ErrorCode`), new tool endpoints, new `*Options` schemas. Clients MUST
+    ignore unknown response properties and unknown enum values. Removing or renaming a
+    field, tightening a type or changing semantics requires `/api/v2`. `oasdiff breaking`
+    runs in CI against the previous committed spec. The `info.version` here is the
+    contract revision (2.0.0 is the synchronous refreeze); the URL stays `/api/v1`
+    because no v1 job API was ever released.
+
+    **Conventions.** JSON `snake_case`. Timestamps RFC 3339 UTC. Sizes in bytes.
+    Errors are always `application/problem+json` (RFC 9457) with a stable `code`.
+    Clients branch on `code`, never on `title` or `detail`.
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: https://api.{apex}
+    description: Production.
+    variables:
+      apex:
+        default: example.com
+        description: Registrable domain of the deployment.
+  - url: http://localhost:8000
+    description: Local development
+tags:
+  - name: health
+    description: Liveness and readiness probes. Unversioned, no secrets in output.
+  - name: catalog
+    description: Public tool catalog.
+  - name: pdf
+    description: Synchronous PDF and image tools. Multipart request, file response.
+  - name: web
+    description: Synchronous web page tools. JSON request, JSON response.
+security: []
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags: [health]
+      summary: Liveness probe
+      description: Returns 200 whenever the process is up. Checks no dependency.
+      x-phase: 1
+      security: []
+      responses:
+        "200":
+          description: Process is alive.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+              examples:
+                ok:
+                  summary: Alive
+                  value:
+                    status: ok
+  /ready:
+    get:
+      operationId: getReadiness
+      tags: [health]
+      summary: Readiness probe
+      description: |
+        Checks the rate-limit store when one is configured. Output is the fixed
+        vocabulary `ok | failed | not_configured`: no versions, hostnames, error text
+        or secrets. 503 when a configured dependency fails.
+      x-phase: 1
+      security: []
+      responses:
+        "200":
+          description: All configured dependencies are reachable.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Readiness"
+              examples:
+                ready:
+                  summary: Ready
+                  value:
+                    status: ready
+                    checks:
+                      rate_limiter: ok
+                no_store_configured:
+                  summary: In-memory rate limiting
+                  value:
+                    status: ready
+                    checks:
+                      rate_limiter: not_configured
+        "503":
+          description: A configured dependency is failing. Same body shape as 200 (not problem+json) so probes can parse it.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Readiness"
+              examples:
+                not_ready:
+                  summary: Rate-limit store down
+                  value:
+                    status: not_ready
+                    checks:
+                      rate_limiter: failed
+  /api/v1/tools:
+    get:
+      operationId: listTools
+      tags: [catalog]
+      summary: List the tool catalog
+      description: |
+        Returns the whole catalog (bounded, about a dozen entries, so deliberately not
+        paginated) in catalog order, plus the global limits. Optional filters narrow
+        the list. Cacheable: carries an `ETag` and honours `If-None-Match` with 304.
+        A tool with `status: available` is callable at `POST /api/v1/{slug}`.
+      x-phase: 1
+      security: []
+      parameters:
+        - name: category
+          in: query
+          required: false
+          description: Return only tools in this category.
+          schema:
+            $ref: "#/components/schemas/ToolCategory"
+          example: organize
+        - name: status
+          in: query
+          required: false
+          description: Return only tools with this status.
+          schema:
+            $ref: "#/components/schemas/ToolStatus"
+          example: available
+        - name: If-None-Match
+          in: header
+          required: false
+          description: ETag from a previous response.
+          schema:
+            type: string
+            maxLength: 200
+          example: '"c1a9f0d2"'
+      responses:
+        "200":
+          description: The catalog.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            ETag:
+              $ref: "#/components/headers/ETag"
+            Cache-Control:
+              description: Public caching is allowed for catalog data.
+              schema:
+                type: string
+                examples: ["public, max-age=300"]
+            RateLimit-Limit:
+              $ref: "#/components/headers/RateLimitLimit"
+            RateLimit-Remaining:
+              $ref: "#/components/headers/RateLimitRemaining"
+            RateLimit-Reset:
+              $ref: "#/components/headers/RateLimitReset"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolList"
+              examples:
+                phase1_all_coming_soon:
+                  summary: Phase 1, every tool coming soon
+                  value:
+                    items:
+                      - slug: merge-pdf
+                        category: organize
+                        title: Merge PDF
+                        description: Combine several PDF files into one document, in the order you choose.
+                        icon: combine
+                        input_kinds: [file]
+                        accepts: [application/pdf]
+                        min_inputs: 2
+                        max_inputs: 10
+                        options_schema: MergePdfOptions
+                        output_kind: pdf
+                        status: coming_soon
+                        phase: 2
+                        seo:
+                          title: Merge PDF files online, without keeping them
+                          description: Combine PDF files into one in seconds. Your files are never stored, the result comes straight back in the response.
+                          keywords: [merge pdf, combine pdf, join pdf files]
+                      - slug: compare-sites
+                        category: compare
+                        title: Compare two web pages
+                        description: Fetch two public web pages and see exactly what differs between them.
+                        icon: git-compare
+                        input_kinds: [url]
+                        accepts: []
+                        min_inputs: 2
+                        max_inputs: 2
+                        options_schema: CompareSitesOptions
+                        output_kind: json
+                        status: coming_soon
+                        phase: 3
+                        seo:
+                          title: Compare two web pages and see the differences
+                          description: Paste two URLs and get a line-by-line diff of their text content. Nothing is stored.
+                          keywords: [compare websites, webpage diff]
+                    limits:
+                      max_request_bytes: 26214400
+                      max_pages: 100
+        "304":
+          description: Catalog unchanged since the supplied ETag. No body.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            ETag:
+              $ref: "#/components/headers/ETag"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/ServerError"
+  /api/v1/merge-pdf:
+    post:
+      operationId: mergePdf
+      tags: [pdf]
+      summary: Merge PDF files
+      description: |
+        Concatenates the uploaded PDFs, in upload order, into one PDF. 2 to 10 files.
+
+        Synchronous: the result is the response body (`200`), delivered as
+        `Content-Disposition: attachment; filename="merge-pdf-result.pdf"`. The `options` part is an
+        optional JSON object (part Content-Type `application/json`) whose shape is
+        `MergePdfOptions`; unknown keys are rejected with `validation_error`.
+        Part filenames and part Content-Types are ignored: the server sniffs magic bytes.
+        The whole request body is capped at `limits.max_request_bytes` from `GET /api/v1/tools`.
+      x-phase: 2
+      security: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/MergePdfRequest"
+            encoding:
+              options:
+                contentType: application/json
+            examples:
+              basic:
+                summary: Typical request
+                value:
+                  files:
+                    - "<binary PDF bytes>"
+                    - "<binary PDF bytes>"
+                  options: "{\"keep_bookmarks\":true}"
+      responses:
+        "200":
+          description: The processed result, as an attachment.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+            Content-Disposition:
+              description: Always `attachment` with a generated filename.
+              required: true
+              schema:
+                type: string
+                pattern: '^attachment; filename="[a-z0-9-]+-result\.[a-z0-9]+"$'
+                examples: ['attachment; filename="merge-pdf-result.pdf"']
+            Content-Length:
+              description: Result size in bytes.
+              schema:
+                type: integer
+                minimum: 0
+                examples: [1048576]
+            RateLimit-Limit:
+              $ref: "#/components/headers/RateLimitLimit"
+            RateLimit-Remaining:
+              $ref: "#/components/headers/RateLimitRemaining"
+            RateLimit-Reset:
+              $ref: "#/components/headers/RateLimitReset"
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+                examples: ["<binary result bytes>"]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/ServerError"
+        "504":
+          $ref: "#/components/responses/GatewayTimeout"
+  /api/v1/split-pdf:
+    post:
+      operationId: splitPdf
+      tags: [pdf]
+      summary: Split a PDF
+      description: |
+        Splits one PDF by page ranges or every N pages. The response is a ZIP with one PDF per part (parts are named `part-001.pdf`, `part-002.pdf`, ...).
+
+        Synchronous: the result is the response body (`200`), delivered as
+        `Content-Disposition: attachment; filename="split-pdf-result.zip"`. The `options` part is an
+        optional JSON object (part Content-Type `application/json`) whose shape is
+        `SplitPdfOptions`; unknown keys are rejected with `validation_error`.
+        Part filenames and part Content-Types are ignored: the server sniffs magic bytes.
+        The whole request body is capped at `limits.max_request_bytes` from `GET /api/v1/tools`.
+      x-phase: 2
+      security: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/SplitPdfRequest"
+            encoding:
+              options:
+                contentType: application/json
+            examples:
+              basic:
+                summary: Typical request
+                value:
+                  file: "<binary PDF bytes>"
+                  options: "{\"ranges\":\"1-3,5,8-10\"}"
+      responses:
+        "200":
+          description: The processed result, as an attachment.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+            Content-Disposition:
+              description: Always `attachment` with a generated filename.
+              required: true
+              schema:
+                type: string
+                pattern: '^attachment; filename="[a-z0-9-]+-result\.[a-z0-9]+"$'
+                examples: ['attachment; filename="split-pdf-result.zip"']
+            Content-Length:
+              description: Result size in bytes.
+              schema:
+                type: integer
+                minimum: 0
+                examples: [1048576]
+            RateLimit-Limit:
+              $ref: "#/components/headers/RateLimitLimit"
+            RateLimit-Remaining:
+              $ref: "#/components/headers/RateLimitRemaining"
+            RateLimit-Reset:
+              $ref: "#/components/headers/RateLimitReset"
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+                examples: ["<binary result bytes>"]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/ServerError"
+        "504":
+          $ref: "#/components/responses/GatewayTimeout"
+  /api/v1/organize-pdf:
+    post:
+      operationId: organizePdf
+      tags: [pdf]
+      summary: Reorder, duplicate or delete pages
+      description: |
+        Builds a new PDF from the given page order. A page that is absent from `page_order` is removed, a page listed twice is duplicated.
+
+        Synchronous: the result is the response body (`200`), delivered as
+        `Content-Disposition: attachment; filename="organize-pdf-result.pdf"`. The `options` part is an
+        optional JSON object (part Content-Type `application/json`) whose shape is
+        `OrganizePdfOptions`; unknown keys are rejected with `validation_error`.
+        Part filenames and part Content-Types are ignored: the server sniffs magic bytes.
+        The whole request body is capped at `limits.max_request_bytes` from `GET /api/v1/tools`.
+      x-phase: 2
+      security: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/OrganizePdfRequest"
+            encoding:
+              options:
+                contentType: application/json
+            examples:
+              basic:
+                summary: Typical request
+                value:
+                  file: "<binary PDF bytes>"
+                  options: "{\"page_order\":[3,1,2,2]}"
+      responses:
+        "200":
+          description: The processed result, as an attachment.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+            Content-Disposition:
+              description: Always `attachment` with a generated filename.
+              required: true
+              schema:
+                type: string
+                pattern: '^attachment; filename="[a-z0-9-]+-result\.[a-z0-9]+"$'
+                examples: ['attachment; filename="organize-pdf-result.pdf"']
+            Content-Length:
+              description: Result size in bytes.
+              schema:
+                type: integer
+                minimum: 0
+                examples: [1048576]
+            RateLimit-Limit:
+              $ref: "#/components/headers/RateLimitLimit"
+            RateLimit-Remaining:
+              $ref: "#/components/headers/RateLimitRemaining"
+            RateLimit-Reset:
+              $ref: "#/components/headers/RateLimitReset"
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+                examples: ["<binary result bytes>"]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/ServerError"
+        "504":
+          $ref: "#/components/responses/GatewayTimeout"
+  /api/v1/rotate-pdf:
+    post:
+      operationId: rotatePdf
+      tags: [pdf]
+      summary: Rotate PDF pages
+      description: |
+        Rotates all pages, or the pages in `pages`, clockwise by `angle` degrees.
+
+        Synchronous: the result is the response body (`200`), delivered as
+        `Content-Disposition: attachment; filename="rotate-pdf-result.pdf"`. The `options` part is an
+        optional JSON object (part Content-Type `application/json`) whose shape is
+        `RotatePdfOptions`; unknown keys are rejected with `validation_error`.
+        Part filenames and part Content-Types are ignored: the server sniffs magic bytes.
+        The whole request body is capped at `limits.max_request_bytes` from `GET /api/v1/tools`.
+      x-phase: 2
+      security: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/RotatePdfRequest"
+            encoding:
+              options:
+                contentType: application/json
+            examples:
+              basic:
+                summary: Typical request
+                value:
+                  file: "<binary PDF bytes>"
+                  options: "{\"angle\":90,\"pages\":\"1-3\"}"
+      responses:
+        "200":
+          description: The processed result, as an attachment.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+            Content-Disposition:
+              description: Always `attachment` with a generated filename.
+              required: true
+              schema:
+                type: string
+                pattern: '^attachment; filename="[a-z0-9-]+-result\.[a-z0-9]+"$'
+                examples: ['attachment; filename="rotate-pdf-result.pdf"']
+            Content-Length:
+              description: Result size in bytes.
+              schema:
+                type: integer
+                minimum: 0
+                examples: [1048576]
+            RateLimit-Limit:
+              $ref: "#/components/headers/RateLimitLimit"
+            RateLimit-Remaining:
+              $ref: "#/components/headers/RateLimitRemaining"
+            RateLimit-Reset:
+              $ref: "#/components/headers/RateLimitReset"
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+                examples: ["<binary result bytes>"]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/ServerError"
+        "504":
+          $ref: "#/components/responses/GatewayTimeout"
+  /api/v1/compress-pdf:
+    post:
+      operationId: compressPdf
+      tags: [pdf]
+      summary: Reduce PDF file size
+      description: |
+        Recompresses a PDF. If the result would be larger than the input, the original bytes are returned unchanged (still `200`).
+
+        Synchronous: the result is the response body (`200`), delivered as
+        `Content-Disposition: attachment; filename="compress-pdf-result.pdf"`. The `options` part is an
+        optional JSON object (part Content-Type `application/json`) whose shape is
+        `CompressPdfOptions`; unknown keys are rejected with `validation_error`.
+        Part filenames and part Content-Types are ignored: the server sniffs magic bytes.
+        The whole request body is capped at `limits.max_request_bytes` from `GET /api/v1/tools`.
+      x-phase: 2
+      security: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/CompressPdfRequest"
+            encoding:
+              options:
+                contentType: application/json
+            examples:
+              basic:
+                summary: Typical request
+                value:
+                  file: "<binary PDF bytes>"
+                  options: "{\"level\":\"medium\"}"
+      responses:
+        "200":
+          description: The processed result, as an attachment.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+            Content-Disposition:
+              description: Always `attachment` with a generated filename.
+              required: true
+              schema:
+                type: string
+                pattern: '^attachment; filename="[a-z0-9-]+-result\.[a-z0-9]+"$'
+                examples: ['attachment; filename="compress-pdf-result.pdf"']
+            Content-Length:
+              description: Result size in bytes.
+              schema:
+                type: integer
+                minimum: 0
+                examples: [1048576]
+            RateLimit-Limit:
+              $ref: "#/components/headers/RateLimitLimit"
+            RateLimit-Remaining:
+              $ref: "#/components/headers/RateLimitRemaining"
+            RateLimit-Reset:
+              $ref: "#/components/headers/RateLimitReset"
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+                examples: ["<binary result bytes>"]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/ServerError"
+        "504":
+          $ref: "#/components/responses/GatewayTimeout"
+  /api/v1/image-to-pdf:
+    post:
+      operationId: imageToPdf
+      tags: [pdf]
+      summary: Convert images to a PDF
+      description: |
+        Places each uploaded image (JPEG, PNG, WebP or TIFF) on its own page, in upload order. 1 to 20 images.
+
+        Synchronous: the result is the response body (`200`), delivered as
+        `Content-Disposition: attachment; filename="image-to-pdf-result.pdf"`. The `options` part is an
+        optional JSON object (part Content-Type `application/json`) whose shape is
+        `ImageToPdfOptions`; unknown keys are rejected with `validation_error`.
+        Part filenames and part Content-Types are ignored: the server sniffs magic bytes.
+        The whole request body is capped at `limits.max_request_bytes` from `GET /api/v1/tools`.
+      x-phase: 2
+      security: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ImageToPdfRequest"
+            encoding:
+              options:
+                contentType: application/json
+            examples:
+              basic:
+                summary: Typical request
+                value:
+                  files:
+                    - "<binary JPEG bytes>"
+                    - "<binary PNG bytes>"
+                  options: "{\"page_size\":\"a4\",\"orientation\":\"auto\",\"margin_mm\":10}"
+      responses:
+        "200":
+          description: The processed result, as an attachment.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+            Content-Disposition:
+              description: Always `attachment` with a generated filename.
+              required: true
+              schema:
+                type: string
+                pattern: '^attachment; filename="[a-z0-9-]+-result\.[a-z0-9]+"$'
+                examples: ['attachment; filename="image-to-pdf-result.pdf"']
+            Content-Length:
+              description: Result size in bytes.
+              schema:
+                type: integer
+                minimum: 0
+                examples: [1048576]
+            RateLimit-Limit:
+              $ref: "#/components/headers/RateLimitLimit"
+            RateLimit-Remaining:
+              $ref: "#/components/headers/RateLimitRemaining"
+            RateLimit-Reset:
+              $ref: "#/components/headers/RateLimitReset"
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+                examples: ["<binary result bytes>"]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/ServerError"
+        "504":
+          $ref: "#/components/responses/GatewayTimeout"
+  /api/v1/pdf-to-images:
+    post:
+      operationId: pdfToImages
+      tags: [pdf]
+      summary: Render PDF pages as images
+      description: |
+        Renders pages to PNG or JPEG. The response is a ZIP with one image per page (`page-001.png`, ...).
+
+        Synchronous: the result is the response body (`200`), delivered as
+        `Content-Disposition: attachment; filename="pdf-to-images-result.zip"`. The `options` part is an
+        optional JSON object (part Content-Type `application/json`) whose shape is
+        `PdfToImagesOptions`; unknown keys are rejected with `validation_error`.
+        Part filenames and part Content-Types are ignored: the server sniffs magic bytes.
+        The whole request body is capped at `limits.max_request_bytes` from `GET /api/v1/tools`.
+      x-phase: 2
+      security: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/PdfToImagesRequest"
+            encoding:
+              options:
+                contentType: application/json
+            examples:
+              basic:
+                summary: Typical request
+                value:
+                  file: "<binary PDF bytes>"
+                  options: "{\"format\":\"png\",\"dpi\":150}"
+      responses:
+        "200":
+          description: The processed result, as an attachment.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+            Content-Disposition:
+              description: Always `attachment` with a generated filename.
+              required: true
+              schema:
+                type: string
+                pattern: '^attachment; filename="[a-z0-9-]+-result\.[a-z0-9]+"$'
+                examples: ['attachment; filename="pdf-to-images-result.zip"']
+            Content-Length:
+              description: Result size in bytes.
+              schema:
+                type: integer
+                minimum: 0
+                examples: [1048576]
+            RateLimit-Limit:
+              $ref: "#/components/headers/RateLimitLimit"
+            RateLimit-Remaining:
+              $ref: "#/components/headers/RateLimitRemaining"
+            RateLimit-Reset:
+              $ref: "#/components/headers/RateLimitReset"
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+                examples: ["<binary result bytes>"]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/ServerError"
+        "504":
+          $ref: "#/components/responses/GatewayTimeout"
+  /api/v1/extract-text:
+    post:
+      operationId: extractText
+      tags: [pdf]
+      summary: Extract text from a PDF
+      description: |
+        Returns the PDF text layer as UTF-8 plain text, pages separated by a form feed (U+000C). A PDF with no text layer returns an empty file (still `200`); there is no OCR.
+
+        Synchronous: the result is the response body (`200`), delivered as
+        `Content-Disposition: attachment; filename="extract-text-result.txt"`. The `options` part is an
+        optional JSON object (part Content-Type `application/json`) whose shape is
+        `ExtractTextOptions`; unknown keys are rejected with `validation_error`.
+        Part filenames and part Content-Types are ignored: the server sniffs magic bytes.
+        The whole request body is capped at `limits.max_request_bytes` from `GET /api/v1/tools`.
+      x-phase: 2
+      security: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ExtractTextRequest"
+            encoding:
+              options:
+                contentType: application/json
+            examples:
+              basic:
+                summary: Typical request
+                value:
+                  file: "<binary PDF bytes>"
+                  options: "{\"pages\":\"1-5\"}"
+      responses:
+        "200":
+          description: The processed result, as an attachment.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+            Content-Disposition:
+              description: Always `attachment` with a generated filename.
+              required: true
+              schema:
+                type: string
+                pattern: '^attachment; filename="[a-z0-9-]+-result\.[a-z0-9]+"$'
+                examples: ['attachment; filename="extract-text-result.txt"']
+            Content-Length:
+              description: Result size in bytes.
+              schema:
+                type: integer
+                minimum: 0
+                examples: [1048576]
+            RateLimit-Limit:
+              $ref: "#/components/headers/RateLimitLimit"
+            RateLimit-Remaining:
+              $ref: "#/components/headers/RateLimitRemaining"
+            RateLimit-Reset:
+              $ref: "#/components/headers/RateLimitReset"
+          content:
+            text/plain; charset=utf-8:
+              schema:
+                type: string
+                format: binary
+                examples: ["<binary result bytes>"]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/ServerError"
+        "504":
+          $ref: "#/components/responses/GatewayTimeout"
+  /api/v1/compare-sites:
+    post:
+      operationId: compareSites
+      tags: [web]
+      summary: Compare two web pages
+      description: |
+        Fetches two public web pages and returns a diff of their visible text. JSON
+        in, JSON out, no attachment. Synchronous.
+
+        SSRF guard (security.md section 3): http and https only, ports 80 and 443,
+        no credentials in the URL, length at most 2048, DNS resolved and vetted
+        (private, loopback, link-local and metadata ranges refused), redirects
+        followed manually (max 3, each hop re-checked), connect timeout 3 s and total
+        10 s per page, response cap 5 MB, `text/html` and `text/plain` only, no
+        JavaScript executed. A refused URL is `400 url_blocked` and the reason is never
+        disclosed. A page that cannot be fetched (unreachable, timeout, too large,
+        wrong content type) is `502 upstream_fetch_failed`. The submitted URLs are never
+        logged or stored.
+      x-phase: 3
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompareSitesRequest"
+            examples:
+              basic:
+                summary: Two versions of a page
+                value:
+                  url_a: https://example.org/pricing
+                  url_b: https://example.org/pricing-new
+                  options:
+                    ignore_whitespace: true
+                    granularity: line
+      responses:
+        "200":
+          description: The diff.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+            RateLimit-Limit:
+              $ref: "#/components/headers/RateLimitLimit"
+            RateLimit-Remaining:
+              $ref: "#/components/headers/RateLimitRemaining"
+            RateLimit-Reset:
+              $ref: "#/components/headers/RateLimitReset"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompareSitesResult"
+              examples:
+                changed:
+                  summary: One line changed
+                  value:
+                    summary:
+                      added: 1
+                      removed: 1
+                      unchanged: 2
+                      similarity: 0.67
+                    diff:
+                      - op: equal
+                        text: Pricing
+                      - op: remove
+                        text: Pro plan 5.99 USD per month
+                      - op: add
+                        text: Pro plan 6.99 USD per month
+                      - op: equal
+                        text: Cancel any time
+                    truncated: false
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/ServerError"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+        "504":
+          $ref: "#/components/responses/GatewayTimeout"
+components:
+  headers:
+    RequestId:
+      description: |
+        Correlation id present on every response, including errors. A client may send
+        its own `X-Request-Id` (8 to 64 chars of `A-Za-z0-9_-`); otherwise the server
+        generates one. Never derived from user content.
+      required: true
+      schema:
+        type: string
+        pattern: "^[A-Za-z0-9_-]{8,64}$"
+        examples: ["req_7Qk2mX9aVb4Lp1Zs"]
+    CacheControlNoStore:
+      description: Always `no-store` on tool, probe and error responses.
+      schema:
+        type: string
+        const: no-store
+    ETag:
+      description: Entity tag of the catalog representation.
+      schema:
+        type: string
+        examples: ['"c1a9f0d2"']
+    RateLimitLimit:
+      description: |
+        Requests allowed in the current window for this client (IETF
+        draft-ietf-httpapi-ratelimit-headers). The budget is per client IP and shared
+        by all tool endpoints.
+      schema:
+        type: integer
+        minimum: 0
+        examples: [20]
+    RateLimitRemaining:
+      description: Requests left in the current window.
+      schema:
+        type: integer
+        minimum: 0
+        examples: [17]
+    RateLimitReset:
+      description: Seconds until the window resets.
+      schema:
+        type: integer
+        minimum: 0
+        examples: [42]
+    RetryAfter:
+      description: Seconds to wait before retrying. Sent with 429.
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        examples: [30]
+  responses:
+    BadRequest:
+      description: "Bad input. Every client-side input problem is 400; branch on `code`. Never echoes filenames, content, URLs or option values."
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+        Cache-Control:
+          $ref: "#/components/headers/CacheControlNoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            validation_error:
+              summary: Field validation failed
+              value:
+                type: urn:problem:validation_error
+                title: Validation failed
+                status: 400
+                detail: One or more fields are invalid.
+                instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                code: validation_error
+                request_id: req_7Qk2mX9aVb4Lp1Zs
+                errors:
+                  - pointer: /options/angle
+                    code: enum
+                    message: Must be one of 90, 180, 270.
+            unsupported_type:
+              summary: Sniffed kind not accepted by the tool
+              value:
+                type: urn:problem:unsupported_type
+                title: Unsupported file type
+                status: 400
+                detail: One of the files is not a type this tool accepts.
+                instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                code: unsupported_type
+                request_id: req_7Qk2mX9aVb4Lp1Zs
+                errors:
+                  - pointer: /files/1
+                    code: unsupported_type
+                    message: File type not accepted.
+            type_mismatch:
+              summary: Mixed or contradictory kinds
+              value:
+                type: urn:problem:type_mismatch
+                title: File types do not match
+                status: 400
+                detail: The files in this request are not of compatible types for this tool.
+                instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                code: type_mismatch
+                request_id: req_7Qk2mX9aVb4Lp1Zs
+            too_many_files:
+              summary: More inputs than the tool allows
+              value:
+                type: urn:problem:too_many_files
+                title: Too many files
+                status: 400
+                detail: The request has more files than this tool allows.
+                instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                code: too_many_files
+                request_id: req_7Qk2mX9aVb4Lp1Zs
+                params:
+                  limit: 10
+            too_many_pages:
+              summary: Page cap exceeded
+              value:
+                type: urn:problem:too_many_pages
+                title: Too many pages
+                status: 400
+                detail: The document has more pages than allowed.
+                instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                code: too_many_pages
+                request_id: req_7Qk2mX9aVb4Lp1Zs
+                params:
+                  limit: 100
+            invalid_file:
+              summary: Corrupt or unreadable document
+              value:
+                type: urn:problem:invalid_file
+                title: Invalid file
+                status: 400
+                detail: The file could not be read as a valid document.
+                instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                code: invalid_file
+                request_id: req_7Qk2mX9aVb4Lp1Zs
+            file_encrypted:
+              summary: Password-protected PDF
+              value:
+                type: urn:problem:file_encrypted
+                title: File is password protected
+                status: 400
+                detail: Remove the password protection and try again.
+                instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                code: file_encrypted
+                request_id: req_7Qk2mX9aVb4Lp1Zs
+            url_blocked:
+              summary: URL rejected by the outbound-fetch guard
+              value:
+                type: urn:problem:url_blocked
+                title: URL not allowed
+                status: 400
+                detail: This URL cannot be fetched.
+                instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                code: url_blocked
+                request_id: req_7Qk2mX9aVb4Lp1Zs
+                errors:
+                  - pointer: /url_a
+                    code: url_blocked
+                    message: URL not allowed.
+            bad_request:
+              summary: Unparseable body
+              value:
+                type: urn:problem:bad_request
+                title: Malformed request
+                status: 400
+                detail: The request body could not be parsed.
+                instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                code: bad_request
+                request_id: req_7Qk2mX9aVb4Lp1Zs
+    PayloadTooLarge:
+      description: "The request body exceeds `limits.max_request_bytes`. The hosting platform may also emit this 413 itself, possibly with a non-problem body: clients must treat any 413 on a tool endpoint as `file_too_large`."
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+        Cache-Control:
+          $ref: "#/components/headers/CacheControlNoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            file_too_large:
+              summary: Over the cap
+              value:
+                type: urn:problem:file_too_large
+                title: File too large
+                status: 413
+                detail: The upload exceeds the maximum size.
+                instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                code: file_too_large
+                request_id: req_7Qk2mX9aVb4Lp1Zs
+                params:
+                  limit_bytes: 26214400
+    TooManyRequests:
+      description: "Rate limited. Sends `Retry-After`. Retry automatically with backoff."
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+        Cache-Control:
+          $ref: "#/components/headers/CacheControlNoStore"
+        Retry-After:
+          $ref: "#/components/headers/RetryAfter"
+        RateLimit-Limit:
+          $ref: "#/components/headers/RateLimitLimit"
+        RateLimit-Remaining:
+          $ref: "#/components/headers/RateLimitRemaining"
+        RateLimit-Reset:
+          $ref: "#/components/headers/RateLimitReset"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            rate_limited:
+              summary: Too many requests in the window
+              value:
+                type: urn:problem:rate_limited
+                title: Too many requests
+                status: 429
+                detail: Slow down and retry shortly.
+                instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                code: rate_limited
+                request_id: req_7Qk2mX9aVb4Lp1Zs
+                retry_after_seconds: 30
+    ServerError:
+      description: "Processing failed or unexpected failure. The body is deliberately generic: no tool stderr, exception text, paths or content. Quote `request_id` to support."
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+        Cache-Control:
+          $ref: "#/components/headers/CacheControlNoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            processing_failed:
+              summary: The tool could not process the input
+              value:
+                type: urn:problem:processing_failed
+                title: Processing failed
+                status: 500
+                detail: The file could not be processed.
+                instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                code: processing_failed
+                request_id: req_7Qk2mX9aVb4Lp1Zs
+            internal_error:
+              summary: Unexpected failure
+              value:
+                type: urn:problem:internal_error
+                title: Internal error
+                status: 500
+                detail: Something went wrong. Quote the request id if you contact support.
+                instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                code: internal_error
+                request_id: req_7Qk2mX9aVb4Lp1Zs
+    BadGateway:
+      description: "A web page to compare could not be fetched (unreachable, timed out, too large or wrong content type). Only on `compare-sites`."
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+        Cache-Control:
+          $ref: "#/components/headers/CacheControlNoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            upstream_fetch_failed:
+              summary: Fetch of a submitted URL failed
+              value:
+                type: urn:problem:upstream_fetch_failed
+                title: Could not fetch the page
+                status: 502
+                detail: One of the pages could not be fetched.
+                instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                code: upstream_fetch_failed
+                request_id: req_7Qk2mX9aVb4Lp1Zs
+                errors:
+                  - pointer: /url_b
+                    code: upstream_fetch_failed
+                    message: Page could not be fetched.
+    GatewayTimeout:
+      description: "The platform time budget for the function was exhausted. Retrying the same input will usually time out again: try a smaller file or fewer pages."
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+        Cache-Control:
+          $ref: "#/components/headers/CacheControlNoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            processing_timeout:
+              summary: Out of time
+              value:
+                type: urn:problem:processing_timeout
+                title: Processing timed out
+                status: 504
+                detail: The operation took too long.
+                instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                code: processing_timeout
+                request_id: req_7Qk2mX9aVb4Lp1Zs
+  schemas:
+    ErrorCode:
+      description: |
+        Stable machine-readable error codes (the `code` of every `Problem`). New codes
+        may be added (additive); clients treat an unknown code as a generic failure of
+        the matching HTTP class. HTTP status per code: 400 bad_request, validation_error,
+        too_many_files, too_many_pages, unsupported_type, type_mismatch, invalid_file,
+        file_encrypted, url_blocked; 404 not_found; 413 file_too_large; 429 rate_limited;
+        500 processing_failed, internal_error; 502 upstream_fetch_failed; 504
+        processing_timeout.
+      type: string
+      enum:
+        - bad_request
+        - validation_error
+        - file_too_large
+        - too_many_files
+        - too_many_pages
+        - unsupported_type
+        - type_mismatch
+        - invalid_file
+        - file_encrypted
+        - url_blocked
+        - rate_limited
+        - upstream_fetch_failed
+        - processing_failed
+        - processing_timeout
+        - internal_error
+        - not_found
+      examples: [file_too_large]
+    FieldError:
+      description: One field-level problem inside a `Problem.errors` list.
+      type: object
+      additionalProperties: false
+      required: [pointer, code, message]
+      properties:
+        pointer:
+          description: JSON Pointer (RFC 6901) to the offending part of the request, such as `/options/angle` or `/files/1`. Never contains user-supplied values.
+          type: string
+          maxLength: 200
+          examples: ["/options/angle"]
+        code:
+          description: Short machine code for the rule that failed (a validation keyword such as `enum`, `required`, `max_length`, or an `ErrorCode`).
+          type: string
+          maxLength: 64
+          examples: [enum]
+        message:
+          description: Human-readable text. Not stable, do not branch on it. Never echoes user input.
+          type: string
+          maxLength: 300
+          examples: ["Must be one of 90, 180, 270."]
+      examples:
+        - pointer: /options/angle
+          code: enum
+          message: Must be one of 90, 180, 270.
+    ProblemParamValue:
+      description: A scalar value in `Problem.params`.
+      oneOf:
+        - type: string
+          maxLength: 100
+        - type: integer
+        - type: boolean
+      examples: [free, 26214400]
+    ProblemParams:
+      description: Small machine-readable context for the code, such as `limit_bytes` or `limit`. Scalar values only.
+      type: object
+      additionalProperties:
+        $ref: "#/components/schemas/ProblemParamValue"
+      examples:
+        - limit_bytes: 26214400
+    Problem:
+      description: |
+        RFC 9457 problem details, the single error envelope for every non-2xx response
+        (except the `/ready` 503 body). Media type `application/problem+json`.
+        `title` and `detail` come from a fixed table per `code`: they never contain raw
+        exception text, tool output, filenames, document content, submitted URLs or
+        option values. Field-level problems use `errors[].pointer`.
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, request_id]
+      properties:
+        type:
+          description: URI reference identifying the problem type. Always `urn:problem:{code}`. Informational, branch on `code`.
+          type: string
+          format: uri-reference
+          maxLength: 100
+          examples: ["urn:problem:file_too_large"]
+        title:
+          description: Short summary. Same for every occurrence of the same `code`.
+          type: string
+          maxLength: 120
+          examples: [File too large]
+        status:
+          description: HTTP status code, repeated for convenience.
+          type: integer
+          minimum: 400
+          maximum: 599
+          examples: [413]
+        detail:
+          description: Occurrence-specific explanation from the fixed table, safe to show to the user.
+          type: string
+          maxLength: 500
+          examples: [The upload exceeds the maximum size.]
+        instance:
+          description: Identifies this occurrence as `urn:request:{request_id}`.
+          type: string
+          format: uri-reference
+          maxLength: 100
+          examples: ["urn:request:req_7Qk2mX9aVb4Lp1Zs"]
+        code:
+          $ref: "#/components/schemas/ErrorCode"
+        request_id:
+          description: Same value as the `X-Request-Id` response header.
+          type: string
+          pattern: "^[A-Za-z0-9_-]{8,64}$"
+          examples: [req_7Qk2mX9aVb4Lp1Zs]
+        errors:
+          description: Field-level problems (validation_error, unsupported_type, url_blocked, upstream_fetch_failed).
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/FieldError"
+          examples:
+            - - pointer: /options/angle
+                code: enum
+                message: Must be one of 90, 180, 270.
+        retry_after_seconds:
+          description: Same value as the `Retry-After` header, repeated for clients that cannot read headers cross-origin. Present with 429.
+          type: integer
+          minimum: 1
+          examples: [30]
+        params:
+          $ref: "#/components/schemas/ProblemParams"
+      examples:
+        - type: urn:problem:file_too_large
+          title: File too large
+          status: 413
+          detail: The upload exceeds the maximum size.
+          instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+          code: file_too_large
+          request_id: req_7Qk2mX9aVb4Lp1Zs
+          params:
+            limit_bytes: 26214400
+    Health:
+      description: Liveness body.
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          const: ok
+          examples: [ok]
+      examples:
+        - status: ok
+    CheckState:
+      description: Outcome of one readiness check. Fixed vocabulary, never error text.
+      type: string
+      enum: [ok, failed, not_configured]
+      examples: [ok]
+    ReadinessStatus:
+      description: Overall readiness.
+      type: string
+      enum: [ready, not_ready]
+      examples: [ready]
+    ReadinessChecks:
+      description: Per-dependency outcomes.
+      type: object
+      additionalProperties: false
+      required: [rate_limiter]
+      properties:
+        rate_limiter:
+          $ref: "#/components/schemas/CheckState"
+      examples:
+        - rate_limiter: ok
+    Readiness:
+      description: Readiness body. No versions, hostnames or secrets.
+      type: object
+      additionalProperties: false
+      required: [status, checks]
+      properties:
+        status:
+          $ref: "#/components/schemas/ReadinessStatus"
+        checks:
+          $ref: "#/components/schemas/ReadinessChecks"
+      examples:
+        - status: ready
+          checks:
+            rate_limiter: ok
+    Limits:
+      description: Global request limits. Values come from server settings, never hard-coded by clients. Use them for UI hints and pre-flight checks only, the server enforces.
+      type: object
+      additionalProperties: false
+      required: [max_request_bytes, max_pages]
+      properties:
+        max_request_bytes:
+          description: Maximum size of the whole request body in bytes (all files plus options). Recommended default 26214400 (25 MB), subject to the hosting platform payload limit.
+          type: integer
+          minimum: 1
+          examples: [26214400]
+        max_pages:
+          description: Maximum pages per PDF document.
+          type: integer
+          minimum: 1
+          examples: [100]
+      examples:
+        - max_request_bytes: 26214400
+          max_pages: 100
+    ToolList:
+      description: The catalog plus the global limits.
+      type: object
+      additionalProperties: false
+      required: [items, limits]
+      properties:
+        items:
+          description: Catalog entries in display order.
+          type: array
+          items:
+            $ref: "#/components/schemas/Tool"
+          examples:
+            - - slug: merge-pdf
+                category: organize
+                title: Merge PDF
+                description: Combine several PDF files into one document, in the order you choose.
+                icon: combine
+                input_kinds: [file]
+                accepts: [application/pdf]
+                min_inputs: 2
+                max_inputs: 10
+                options_schema: MergePdfOptions
+                output_kind: pdf
+                status: coming_soon
+                phase: 2
+                seo:
+                  title: Merge PDF files online, without keeping them
+                  description: Combine PDF files into one in seconds. Your files are never stored, the result comes straight back in the response.
+                  keywords: [merge pdf, combine pdf]
+        limits:
+          $ref: "#/components/schemas/Limits"
+      examples:
+        - items: []
+          limits:
+            max_request_bytes: 26214400
+            max_pages: 100
+    ToolCategory:
+      description: Catalog grouping. Adding a category is a minor, additive change; clients must render unknown
+        categories gracefully.
+      type: string
+      enum:
+      - organize
+      - optimize
+      - convert-to-pdf
+      - convert-from-pdf
+      - compare
+      examples:
+      - organize
+    InputKind:
+      description: Kind of input a tool accepts. file = multipart upload, url = web page address in a JSON
+        body.
+      type: string
+      enum:
+      - file
+      - url
+      examples:
+      - file
+    OutputKind:
+      description: What a successful response carries. pdf, zip and txt are attachments; json is an inline
+        JSON body.
+      type: string
+      enum:
+      - pdf
+      - zip
+      - txt
+      - json
+      examples:
+      - pdf
+    ToolStatus:
+      description: available = the endpoint exists and works. coming_soon = listed for SEO and roadmap; the
+        endpoint does not exist yet (framework 404).
+      type: string
+      enum:
+      - available
+      - coming_soon
+      examples:
+      - coming_soon
+    ToolFaqItem:
+      description: One FAQ entry.
+      type: object
+      additionalProperties: false
+      required:
+      - question
+      - answer
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 200
+          examples:
+          - Are my files stored after merging?
+        answer:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          examples:
+          - No. The file is processed in memory and the result is returned in the same request. Nothing is
+            saved on our servers.
+      examples:
+      - question: Are my files stored after merging?
+        answer: No. The file is processed in memory and the result is returned in the same request. Nothing
+          is saved on our servers.
+    ToolSeo:
+      description: Search and landing-page metadata.
+      type: object
+      additionalProperties: false
+      required:
+      - title
+      - description
+      - keywords
+      properties:
+        title:
+          description: HTML title tag.
+          type: string
+          minLength: 1
+          maxLength: 70
+          examples:
+          - Merge PDF files online, without keeping them
+        description:
+          description: Meta description.
+          type: string
+          minLength: 1
+          maxLength: 170
+          examples:
+          - 'Combine PDF files into one in seconds. Your files are never stored: the result comes straight
+            back in the response.'
+        keywords:
+          description: Target search phrases.
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 60
+          minItems: 1
+          maxItems: 15
+          uniqueItems: true
+          examples:
+          - - merge pdf
+            - combine pdf
+            - join pdf files
+        faq:
+          description: Optional FAQ entries rendered on the landing page and as structured data.
+          type: array
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/ToolFaqItem'
+      examples:
+      - title: Merge PDF files online, without keeping them
+        description: 'Combine PDF files into one in seconds. Your files are never stored: the result comes
+          straight back in the response.'
+        keywords:
+        - merge pdf
+        - combine pdf
+    Tool:
+      description: One tool in the catalog. Its endpoint is POST /api/v1/{slug}.
+      type: object
+      additionalProperties: false
+      required:
+      - slug
+      - category
+      - title
+      - description
+      - icon
+      - input_kinds
+      - accepts
+      - min_inputs
+      - max_inputs
+      - options_schema
+      - output_kind
+      - status
+      - phase
+      - seo
+      properties:
+        slug:
+          description: Stable kebab-case identifier. It is both the URL path segment (POST /api/v1/{slug})
+            and the landing-page route (/tools/{slug}). Never reused for a different tool.
+          type: string
+          pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
+          minLength: 3
+          maxLength: 64
+          examples:
+          - merge-pdf
+        category:
+          $ref: '#/components/schemas/ToolCategory'
+        title:
+          description: Display name.
+          type: string
+          minLength: 1
+          maxLength: 60
+          examples:
+          - Merge PDF
+        description:
+          description: One-sentence summary for cards and listings.
+          type: string
+          minLength: 1
+          maxLength: 200
+          examples:
+          - Combine several PDF files into one document, in the order you choose.
+        icon:
+          description: Lucide icon name (kebab-case).
+          type: string
+          pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
+          maxLength: 40
+          examples:
+          - combine
+        input_kinds:
+          description: Kinds of input accepted. File tools are [file]; site comparison is [url].
+          type: array
+          items:
+            $ref: '#/components/schemas/InputKind'
+          minItems: 1
+          uniqueItems: true
+          examples:
+          - - file
+        accepts:
+          description: 'MIME types accepted when input_kinds contains `file`. Informational for the UI file
+            picker: the server decides by magic-byte sniffing and ignores the client Content-Type. Empty when
+            no file input.'
+          type: array
+          items:
+            type: string
+            pattern: ^[a-z0-9]+/[a-z0-9.+-]+$
+            maxLength: 127
+          uniqueItems: true
+          maxItems: 20
+          examples:
+          - - application/pdf
+        min_inputs:
+          description: Minimum number of inputs (files or URLs) per request.
+          type: integer
+          minimum: 1
+          maximum: 100
+          examples:
+          - 2
+        max_inputs:
+          description: Maximum number of inputs per request. Exceeding it returns too_many_files.
+          type: integer
+          minimum: 1
+          maximum: 100
+          examples:
+          - 10
+        options_schema:
+          description: Name of the schema under components.schemas of shared/openapi.yaml that describes this
+            tool's `options` object, or null when the tool takes no options.
+          type:
+          - string
+          - 'null'
+          pattern: ^[A-Z][A-Za-z0-9]*Options$
+          maxLength: 64
+          examples:
+          - MergePdfOptions
+          - null
+        output_kind:
+          $ref: '#/components/schemas/OutputKind'
+        status:
+          $ref: '#/components/schemas/ToolStatus'
+        phase:
+          description: Delivery phase in which the tool becomes available. Informational (roadmap and coming-soon
+            UI).
+          type: integer
+          minimum: 1
+          maximum: 10
+          examples:
+          - 2
+        seo:
+          $ref: '#/components/schemas/ToolSeo'
+      examples:
+      - slug: compare-sites
+        category: compare
+        title: Compare two web pages
+        description: Fetch two public web pages and see exactly what differs between them.
+        icon: git-compare
+        input_kinds:
+        - url
+        accepts: []
+        min_inputs: 2
+        max_inputs: 2
+        options_schema: CompareSitesOptions
+        output_kind: json
+        status: coming_soon
+        phase: 3
+        seo:
+          title: Compare two web pages and see the differences
+          description: Paste two URLs and get a line-by-line diff of their text content. Nothing is stored.
+          keywords:
+          - compare websites
+          - webpage diff
+    PageRange:
+      description: Comma-separated 1-based pages and ranges, such as `1-3,5,8-10`. Pages beyond the document are `400 validation_error`.
+      type: string
+      pattern: "^[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*$"
+      minLength: 1
+      maxLength: 200
+      examples: ["1-3,5,8-10"]
+    MergePdfOptions:
+      description: Options for `merge-pdf`.
+      type: object
+      additionalProperties: false
+      properties:
+        keep_bookmarks:
+          description: Preserve each source document's outline.
+          type: boolean
+          default: true
+          examples: [true]
+      examples:
+        - keep_bookmarks: true
+    SplitPdfOptions:
+      description: Options for `split-pdf`. Exactly one of `ranges` or `every_n` is required (otherwise `validation_error`).
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        ranges:
+          $ref: "#/components/schemas/PageRange"
+        every_n:
+          description: Split into parts of this many pages each.
+          type: integer
+          minimum: 1
+          maximum: 500
+          examples: [10]
+      examples:
+        - ranges: "1-3,5,8-10"
+        - every_n: 10
+    OrganizePdfOptions:
+      description: Options for `organize-pdf`.
+      type: object
+      additionalProperties: false
+      required: [page_order]
+      properties:
+        page_order:
+          description: 1-based source pages in their new order. A page that is absent is removed, a page listed twice is duplicated.
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            type: integer
+            minimum: 1
+            maximum: 500
+          examples:
+            - [3, 1, 2, 2]
+      examples:
+        - page_order: [3, 1, 2, 2]
+    RotationAngle:
+      description: Clockwise rotation in degrees.
+      type: integer
+      enum: [90, 180, 270]
+      examples: [90]
+    RotatePdfOptions:
+      description: Options for `rotate-pdf`.
+      type: object
+      additionalProperties: false
+      required: [angle]
+      properties:
+        angle:
+          $ref: "#/components/schemas/RotationAngle"
+        pages:
+          description: Pages to rotate. Omit for all pages.
+          allOf:
+            - $ref: "#/components/schemas/PageRange"
+      examples:
+        - angle: 90
+          pages: "1-3"
+    CompressionLevel:
+      description: Trade-off between size and quality.
+      type: string
+      enum: [low, medium, high]
+      default: medium
+      examples: [medium]
+    CompressPdfOptions:
+      description: Options for `compress-pdf`.
+      type: object
+      additionalProperties: false
+      properties:
+        level:
+          $ref: "#/components/schemas/CompressionLevel"
+      examples:
+        - level: medium
+    PageSize:
+      description: Target page size. `fit` sizes each page to its image.
+      type: string
+      enum: [a4, letter, fit]
+      default: a4
+      examples: [a4]
+    PageOrientation:
+      description: Page orientation. `auto` follows each image.
+      type: string
+      enum: [auto, portrait, landscape]
+      default: auto
+      examples: [auto]
+    ImageToPdfOptions:
+      description: Options for `image-to-pdf`.
+      type: object
+      additionalProperties: false
+      properties:
+        page_size:
+          $ref: "#/components/schemas/PageSize"
+        orientation:
+          $ref: "#/components/schemas/PageOrientation"
+        margin_mm:
+          type: integer
+          minimum: 0
+          maximum: 50
+          default: 10
+          examples: [10]
+      examples:
+        - page_size: a4
+          orientation: auto
+          margin_mm: 10
+    ImageFormat:
+      description: Output image format.
+      type: string
+      enum: [png, jpg]
+      default: png
+      examples: [png]
+    PdfToImagesOptions:
+      description: Options for `pdf-to-images`.
+      type: object
+      additionalProperties: false
+      properties:
+        format:
+          $ref: "#/components/schemas/ImageFormat"
+        dpi:
+          type: integer
+          minimum: 72
+          maximum: 300
+          default: 150
+          examples: [150]
+        pages:
+          $ref: "#/components/schemas/PageRange"
+      examples:
+        - format: png
+          dpi: 150
+    ExtractTextOptions:
+      description: Options for `extract-text`.
+      type: object
+      additionalProperties: false
+      properties:
+        pages:
+          description: Pages to extract. Omit for all pages.
+          allOf:
+            - $ref: "#/components/schemas/PageRange"
+      examples:
+        - pages: "1-5"
+    CompareGranularity:
+      description: Unit of comparison for the diff.
+      type: string
+      enum: [word, line]
+      default: line
+      examples: [line]
+    CompareSitesOptions:
+      description: Options for `compare-sites`.
+      type: object
+      additionalProperties: false
+      properties:
+        ignore_whitespace:
+          type: boolean
+          default: true
+          examples: [true]
+        granularity:
+          $ref: "#/components/schemas/CompareGranularity"
+      examples:
+        - ignore_whitespace: true
+          granularity: line
+    MergePdfRequest:
+      description: Multipart body of `POST /api/v1/merge-pdf`. Part names are exactly the property names. Unknown parts are rejected with `validation_error`.
+      type: object
+      additionalProperties: false
+      required: [files]
+      properties:
+        files:
+          description: "PDF files in significant order (2 to 10)."
+          type: array
+          minItems: 2
+          maxItems: 10
+          items:
+            type: string
+            format: binary
+          examples:
+            - ["<binary PDF bytes>", "<binary PDF bytes>"]
+        options:
+          description: Optional JSON object sent as a part with Content-Type `application/json`, shaped as `MergePdfOptions`. Omit for defaults.
+          type: string
+          contentMediaType: application/json
+          contentSchema:
+            $ref: "#/components/schemas/MergePdfOptions"
+          examples: ['{"keep_bookmarks":true}']
+      examples:
+        - files: ["<binary PDF bytes>", "<binary PDF bytes>"]
+          options: '{"keep_bookmarks":true}'
+    SplitPdfRequest:
+      description: Multipart body of `POST /api/v1/split-pdf`. Part names are exactly the property names. Unknown parts are rejected with `validation_error`.
+      type: object
+      additionalProperties: false
+      required: [file]
+      properties:
+        file:
+          description: One PDF file.
+          type: string
+          format: binary
+          examples: ["<binary PDF bytes>"]
+        options:
+          description: Optional JSON object sent as a part with Content-Type `application/json`, shaped as `SplitPdfOptions`. Omit for defaults.
+          type: string
+          contentMediaType: application/json
+          contentSchema:
+            $ref: "#/components/schemas/SplitPdfOptions"
+          examples: ['{"every_n":10}']
+      examples:
+        - file: "<binary PDF bytes>"
+          options: '{"every_n":10}'
+    OrganizePdfRequest:
+      description: Multipart body of `POST /api/v1/organize-pdf`. Part names are exactly the property names. Unknown parts are rejected with `validation_error`.
+      type: object
+      additionalProperties: false
+      required: [file]
+      properties:
+        file:
+          description: One PDF file.
+          type: string
+          format: binary
+          examples: ["<binary PDF bytes>"]
+        options:
+          description: Optional JSON object sent as a part with Content-Type `application/json`, shaped as `OrganizePdfOptions`. Omit for defaults.
+          type: string
+          contentMediaType: application/json
+          contentSchema:
+            $ref: "#/components/schemas/OrganizePdfOptions"
+          examples: ['{"page_order":[3,1,2,2]}']
+      examples:
+        - file: "<binary PDF bytes>"
+          options: '{"page_order":[3,1,2,2]}'
+    RotatePdfRequest:
+      description: Multipart body of `POST /api/v1/rotate-pdf`. Part names are exactly the property names. Unknown parts are rejected with `validation_error`.
+      type: object
+      additionalProperties: false
+      required: [file]
+      properties:
+        file:
+          description: One PDF file.
+          type: string
+          format: binary
+          examples: ["<binary PDF bytes>"]
+        options:
+          description: Optional JSON object sent as a part with Content-Type `application/json`, shaped as `RotatePdfOptions`. Omit for defaults.
+          type: string
+          contentMediaType: application/json
+          contentSchema:
+            $ref: "#/components/schemas/RotatePdfOptions"
+          examples: ['{"angle":90}']
+      examples:
+        - file: "<binary PDF bytes>"
+          options: '{"angle":90}'
+    CompressPdfRequest:
+      description: Multipart body of `POST /api/v1/compress-pdf`. Part names are exactly the property names. Unknown parts are rejected with `validation_error`.
+      type: object
+      additionalProperties: false
+      required: [file]
+      properties:
+        file:
+          description: One PDF file.
+          type: string
+          format: binary
+          examples: ["<binary PDF bytes>"]
+        options:
+          description: Optional JSON object sent as a part with Content-Type `application/json`, shaped as `CompressPdfOptions`. Omit for defaults.
+          type: string
+          contentMediaType: application/json
+          contentSchema:
+            $ref: "#/components/schemas/CompressPdfOptions"
+          examples: ['{"level":"medium"}']
+      examples:
+        - file: "<binary PDF bytes>"
+          options: '{"level":"medium"}'
+    ImageToPdfRequest:
+      description: Multipart body of `POST /api/v1/image-to-pdf`. Part names are exactly the property names. Unknown parts are rejected with `validation_error`.
+      type: object
+      additionalProperties: false
+      required: [files]
+      properties:
+        files:
+          description: "image files in significant order (1 to 20)."
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            type: string
+            format: binary
+          examples:
+            - ["<binary image bytes>"]
+        options:
+          description: Optional JSON object sent as a part with Content-Type `application/json`, shaped as `ImageToPdfOptions`. Omit for defaults.
+          type: string
+          contentMediaType: application/json
+          contentSchema:
+            $ref: "#/components/schemas/ImageToPdfOptions"
+          examples: ['{"page_size":"a4"}']
+      examples:
+        - files: ["<binary image bytes>"]
+          options: '{"page_size":"a4"}'
+    PdfToImagesRequest:
+      description: Multipart body of `POST /api/v1/pdf-to-images`. Part names are exactly the property names. Unknown parts are rejected with `validation_error`.
+      type: object
+      additionalProperties: false
+      required: [file]
+      properties:
+        file:
+          description: One PDF file.
+          type: string
+          format: binary
+          examples: ["<binary PDF bytes>"]
+        options:
+          description: Optional JSON object sent as a part with Content-Type `application/json`, shaped as `PdfToImagesOptions`. Omit for defaults.
+          type: string
+          contentMediaType: application/json
+          contentSchema:
+            $ref: "#/components/schemas/PdfToImagesOptions"
+          examples: ['{"format":"png","dpi":150}']
+      examples:
+        - file: "<binary PDF bytes>"
+          options: '{"format":"png","dpi":150}'
+    ExtractTextRequest:
+      description: Multipart body of `POST /api/v1/extract-text`. Part names are exactly the property names. Unknown parts are rejected with `validation_error`.
+      type: object
+      additionalProperties: false
+      required: [file]
+      properties:
+        file:
+          description: One PDF file.
+          type: string
+          format: binary
+          examples: ["<binary PDF bytes>"]
+        options:
+          description: Optional JSON object sent as a part with Content-Type `application/json`, shaped as `ExtractTextOptions`. Omit for defaults.
+          type: string
+          contentMediaType: application/json
+          contentSchema:
+            $ref: "#/components/schemas/ExtractTextOptions"
+          examples: ['{"pages":"1-5"}']
+      examples:
+        - file: "<binary PDF bytes>"
+          options: '{"pages":"1-5"}'
+    CompareSitesRequest:
+      description: JSON body of `POST /api/v1/compare-sites`.
+      type: object
+      additionalProperties: false
+      required: [url_a, url_b]
+      properties:
+        url_a:
+          description: First page. Absolute http or https URL, at most 2048 characters, no credentials, port 80 or 443 only.
+          type: string
+          format: uri
+          maxLength: 2048
+          examples: ["https://example.org/pricing"]
+        url_b:
+          description: Second page, same rules as `url_a`.
+          type: string
+          format: uri
+          maxLength: 2048
+          examples: ["https://example.org/pricing-new"]
+        options:
+          $ref: "#/components/schemas/CompareSitesOptions"
+      examples:
+        - url_a: https://example.org/pricing
+          url_b: https://example.org/pricing-new
+          options:
+            ignore_whitespace: true
+            granularity: line
+    DiffOp:
+      description: Kind of a diff entry.
+      type: string
+      enum: [equal, add, remove]
+      examples: [add]
+    DiffEntry:
+      description: One diff unit (a line or a word, per `granularity`). `text` is page content, returned only to the requester and never logged.
+      type: object
+      additionalProperties: false
+      required: [op, text]
+      properties:
+        op:
+          $ref: "#/components/schemas/DiffOp"
+        text:
+          type: string
+          maxLength: 5000
+          examples: [Pro plan 6.99 USD per month]
+      examples:
+        - op: add
+          text: Pro plan 6.99 USD per month
+    DiffSummary:
+      description: Counts over the full diff, including entries cut by truncation.
+      type: object
+      additionalProperties: false
+      required: [added, removed, unchanged, similarity]
+      properties:
+        added:
+          type: integer
+          minimum: 0
+          examples: [1]
+        removed:
+          type: integer
+          minimum: 0
+          examples: [1]
+        unchanged:
+          type: integer
+          minimum: 0
+          examples: [2]
+        similarity:
+          description: Similarity ratio, 0 (nothing in common) to 1 (identical).
+          type: number
+          minimum: 0
+          maximum: 1
+          examples: [0.67]
+      examples:
+        - added: 1
+          removed: 1
+          unchanged: 2
+          similarity: 0.67
+    CompareSitesResult:
+      description: Diff of the visible text of the two pages. The response is capped by a server setting (`truncated` reports a cut).
+      type: object
+      additionalProperties: false
+      required: [summary, diff, truncated]
+      properties:
+        summary:
+          $ref: "#/components/schemas/DiffSummary"
+        diff:
+          type: array
+          maxItems: 20000
+          items:
+            $ref: "#/components/schemas/DiffEntry"
+          examples:
+            - - op: equal
+                text: Pricing
+              - op: remove
+                text: Pro plan 5.99 USD per month
+              - op: add
+                text: Pro plan 6.99 USD per month
+        truncated:
+          description: True when `diff` was cut at the server cap. `summary` still covers the full diff.
+          type: boolean
+          examples: [false]
+      examples:
+        - summary:
+            added: 1
+            removed: 1
+            unchanged: 2
+            similarity: 0.67
+          diff:
+            - op: equal
+              text: Pricing
+            - op: remove
+              text: Pro plan 5.99 USD per month
+            - op: add
+              text: Pro plan 6.99 USD per month
+            - op: equal
+              text: Cancel any time
+          truncated: false

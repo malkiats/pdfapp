@@ -1,0 +1,66 @@
+# Redocly CLI config for the frozen API contract (docs/api.md §8).
+#   npx -y @redocly/cli@2.72.1 lint --config redocly.yaml shared/openapi.yaml
+# Strict: start from `recommended-strict` (every recommended rule is an error)
+# and tighten further for contract-first codegen and the problem+json error model.
+# Reviewed, location-specific exceptions live in .redocly.lint-ignore.yaml
+# (health probes have no 4xx by design; the localhost server entry is the
+# documented local-dev server). Do not add blanket rule downgrades here.
+
+apis:
+  main:
+    root: shared/openapi.yaml
+
+extends:
+  - recommended-strict
+
+rules:
+  # --- identity and codegen stability ------------------------------------
+  operation-operationId: error
+  operation-operationId-unique: error
+  operation-operationId-url-safe: error
+  operation-summary: error
+  operation-description: warn
+  operation-tag-defined: error
+  tag-description: error
+  tags-alphabetical: off
+
+  # --- responses ----------------------------------------------------------
+  operation-2xx-response: error
+  operation-4xx-response: error
+  # Every 4xx must be documented as application/problem+json (RFC 9457 superset)
+  operation-4xx-problem-details-rfc7807: error
+
+  # --- parameters and paths ----------------------------------------------
+  operation-parameters-unique: error
+  path-parameters-defined: error
+  path-declaration-must-exist: error
+  path-not-include-query: error
+  no-ambiguous-paths: error
+  no-identical-paths: error
+  no-path-trailing-slash: error
+  paths-kebab-case: error
+
+  # --- schemas and examples ----------------------------------------------
+  no-unused-components: error
+  no-invalid-media-type-examples:
+    severity: error
+    allowAdditionalProperties: false
+  no-invalid-schema-examples:
+    severity: error
+    allowAdditionalProperties: false
+  no-example-value-and-externalValue: error
+  no-enum-type-mismatch: error
+  no-required-schema-properties-undefined: error
+  no-schema-type-mismatch: error
+
+  # --- security and servers ----------------------------------------------
+  security-defined: error
+  no-http-verbs-in-paths: error
+  no-empty-servers: error
+  no-server-variables-empty-enum: error
+  no-undefined-server-variable: error
+  no-server-trailing-slash: error
+
+  # --- info ---------------------------------------------------------------
+  info-contact: off # proprietary internal contract; no public contact
+  info-license: error

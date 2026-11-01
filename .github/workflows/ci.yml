@@ -1,0 +1,323 @@
+# CI for the monorepo. Stages run as parallel jobs; cheap checks fail fast.
+#
+#   meta      workflow lint (actionlint), Dockerfile lint (hadolint), compose config
+#   contract  OpenAPI lint (Redocly, strict), catalog schema validation,
+#             breaking-change check vs the PR base branch (oasdiff)
+#   backend   uv sync, ruff, ruff format, mypy, banned-API check, pytest, codegen drift
+#   frontend  npm ci, lint, typecheck, vitest, build, Playwright e2e, openapi-typescript drift
+#   security  pip-audit, npm audit (high+), gitleaks
+#   docker    build backend image, Trivy image scan, compose smoke test (/health)
+#
+# Every third-party action is pinned to a full commit SHA (tag in the comment);
+# Dependabot keeps them current. Tool images are pinned by digest.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Least privilege: nothing in this workflow writes to the repo, packages or
+# security events. Jobs inherit read-only contents access.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # cancel superseded PR runs; never cancel a run on main
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  FORCE_COLOR: "1"
+  UV_LOCKED: "1"          # every uv sync/run must use uv.lock unchanged
+  NEXT_TELEMETRY_DISABLED: "1"
+  REDOCLY_CLI_VERSION: "2.72.1"
+  REDOCLY_TELEMETRY: "off"
+  OASDIFF_IMAGE: tufin/oasdiff:v1.35.0@sha256:82b1840a77335562bb11ce95f77ad31745a0c6f3a770929333ed1c5ef466e400
+  GITLEAKS_IMAGE: zricethezav/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+  ACTIONLINT_IMAGE: rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
+  HADOLINT_IMAGE: hadolint/hadolint:v2.15.1@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d
+
+jobs:
+  # ---------------------------------------------------------------------------
+  meta:
+    name: meta (actionlint, hadolint, compose)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: actionlint
+        run: docker run --rm -v "$PWD:/repo:ro" -w /repo "$ACTIONLINT_IMAGE" -color
+
+      - name: hadolint
+        run: |
+          for f in backend/Dockerfile infrastructure/docker/*.Dockerfile; do
+            echo "::group::$f"
+            docker run --rm -i "$HADOLINT_IMAGE" hadolint --failure-threshold warning - < "$f"
+            echo "::endgroup::"
+          done
+
+      - name: docker compose config (all profiles)
+        run: docker compose --profile db --profile mock --profile frontend config --quiet
+
+  # ---------------------------------------------------------------------------
+  contract:
+    name: contract (redocly, catalog, oasdiff)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # base branch spec is needed for the breaking-change check
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Redocly lint (strict, redocly.yaml)
+        run: npx -y "@redocly/cli@${REDOCLY_CLI_VERSION}" lint --config redocly.yaml shared/openapi.yaml
+
+      - name: Validate tool catalog against its JSON Schema
+        run: |
+          npx -y -p ajv-cli@5.0.0 -p ajv-formats@3.0.1 \
+            ajv validate --spec=draft2020 --strict=true -c ajv-formats \
+            -s shared/tool-catalog.schema.json -d shared/tool-catalog.json
+
+      - name: Breaking-change check vs base branch (oasdiff)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if ! git cat-file -e "origin/${BASE_REF}:shared/openapi.yaml" 2>/dev/null; then
+            echo "No shared/openapi.yaml on ${BASE_REF} yet: first contract release, nothing to compare."
+            exit 0
+          fi
+          mkdir -p "$RUNNER_TEMP/oasdiff"
+          git show "origin/${BASE_REF}:shared/openapi.yaml" > "$RUNNER_TEMP/oasdiff/base.yaml"
+          cp shared/openapi.yaml "$RUNNER_TEMP/oasdiff/revision.yaml"
+          docker run --rm -v "$RUNNER_TEMP/oasdiff:/specs:ro" "$OASDIFF_IMAGE" \
+            breaking /specs/base.yaml /specs/revision.yaml --fail-on ERR --format githubactions
+
+  # ---------------------------------------------------------------------------
+  backend:
+    name: backend (ruff, mypy, pytest, codegen drift)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version-file: .python-version
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: uv sync (locked, with dev deps)
+        run: uv sync --locked
+
+      - name: ruff check
+        run: uv run ruff check --output-format=github .
+
+      - name: ruff format --check
+        run: uv run ruff format --check .
+
+      - name: mypy
+        run: uv run mypy app
+
+      # Belt and braces next to ruff's banned-api rule (ADR-0002 §1): only
+      # app/storage/ may import tempfile or boto3.
+      - name: banned-API check (tempfile/boto3 outside app/storage)
+        run: |
+          hits=$(grep -rnE '^\s*(import|from)\s+(tempfile|boto3|botocore)\b' app --include='*.py' \
+                 | grep -v '^app/storage/' || true)
+          if [ -n "$hits" ]; then
+            echo "::error::tempfile/boto3 imported outside app/storage (ADR-0002):"
+            echo "$hits"
+            exit 1
+          fi
+
+      # pytest also regenerates the contract models and compares them (drift test)
+      - name: pytest
+        run: uv run pytest
+
+      - name: OpenAPI codegen drift (backend/app/schemas/generated)
+        run: |
+          uv run datamodel-codegen \
+            --input ../shared/openapi.yaml --input-file-type openapi \
+            --output app/schemas/generated/models.py \
+            --output-model-type pydantic_v2.BaseModel --target-python-version 3.12 \
+            --use-annotated --field-constraints --use-standard-collections --use-union-operator \
+            --use-subclass-enum --use-schema-description --disable-timestamp --reuse-model \
+            --strict-nullable --collapse-root-models --formatters ruff-format
+          git diff --exit-code -- app/schemas/generated \
+            || { echo "::error::Generated models are stale. Run 'make codegen' and commit."; exit 1; }
+
+  # ---------------------------------------------------------------------------
+  frontend:
+    name: frontend (lint, typecheck, vitest, build, e2e, types drift)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: npm ci
+        run: npm ci --no-audit --no-fund
+
+      - name: lint
+        run: npm run lint
+
+      # `typecheck` runs `next typegen` first, so it does not depend on a build
+      - name: typecheck
+        run: npm run typecheck
+
+      - name: unit tests (vitest)
+        run: npm test
+
+      - name: build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+        run: npm run build
+
+      - name: Install Playwright browser (chromium)
+        run: npx --no-install playwright install --with-deps chromium
+
+      - name: e2e smoke (Playwright)
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+        run: npm run test:e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: OpenAPI types drift (src/lib/api/schema.d.ts)
+        run: |
+          npm run api:types
+          git diff --exit-code -- src/lib/api/schema.d.ts \
+            || { echo "::error::API types are stale. Run 'make codegen' and commit."; exit 1; }
+
+  # ---------------------------------------------------------------------------
+  security:
+    name: security (pip-audit, npm audit, gitleaks)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # gitleaks scans the full history
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version-file: .python-version
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: pip-audit (locked runtime + dev deps, hashed)
+        working-directory: backend
+        run: |
+          uv export --locked --all-groups --no-emit-project --format requirements-txt \
+            -o "$RUNNER_TEMP/requirements.txt"
+          uvx pip-audit@2.10.0 --strict --disable-pip -r "$RUNNER_TEMP/requirements.txt"
+
+      - name: npm audit (high and above fail)
+        working-directory: frontend
+        run: npm audit --audit-level=high
+
+      - name: gitleaks (full history, redacted)
+        run: |
+          docker run --rm -v "$PWD:/repo:ro" -w /repo "$GITLEAKS_IMAGE" \
+            git /repo --config /repo/.gitleaks.toml --redact --verbose --exit-code 1
+
+  # ---------------------------------------------------------------------------
+  docker:
+    name: docker (build, trivy, smoke)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    needs: [meta]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build backend image (runtime target)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: backend
+          file: backend/Dockerfile
+          target: runtime
+          build-contexts: |
+            shared=shared
+          load: true
+          push: false
+          provenance: false
+          tags: |
+            doctools-backend:dev
+            doctools-backend:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+
+      - name: Trivy image scan (HIGH/CRITICAL with a fix available fail)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: doctools-backend:${{ github.sha }}
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+
+      - name: Image size report
+        run: docker image ls doctools-backend:dev --format '{{.Repository}}:{{.Tag}} {{.Size}}'
+
+      - name: Compose smoke test (valkey + api, GET /health)
+        run: |
+          docker compose up -d --no-build --wait --wait-timeout 90 valkey api
+          curl --fail --silent --show-error http://127.0.0.1:8000/health
+          curl --silent --show-error -o /dev/null -w 'ready: %{http_code}\n' http://127.0.0.1:8000/ready
+
+      - name: Compose logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 200 valkey api
+
+      - name: Compose down
+        if: always()
+        run: docker compose down -v --remove-orphans

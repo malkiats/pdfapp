@@ -1,0 +1,288 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tool-catalog.schema.json",
+  "title": "Tool catalog",
+  "description": "Schema of shared/tool-catalog.json (the data file owned by the backend builder). The API serves these entries unchanged from GET /api/v1/tools, so the $defs below are identical to the same-named components.schemas in shared/openapi.yaml (a contract test enforces this). The endpoint of a tool is always POST /api/v1/{slug}. Slug uniqueness is not expressible in JSON Schema and is enforced by the CI catalog check.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "tools"],
+  "properties": {
+    "schema_version": {
+      "description": "Catalog document format version. Bump only on a breaking change to this schema.",
+      "const": 2,
+      "examples": [2]
+    },
+    "tools": {
+      "description": "Catalog entries in display order. The order is preserved by the API.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/Tool" },
+      "examples": [
+        [
+          {
+            "slug": "merge-pdf",
+            "category": "organize",
+            "title": "Merge PDF",
+            "description": "Combine several PDF files into one document, in the order you choose.",
+            "icon": "combine",
+            "input_kinds": ["file"],
+            "accepts": ["application/pdf"],
+            "min_inputs": 2,
+            "max_inputs": 10,
+            "options_schema": "MergePdfOptions",
+            "output_kind": "pdf",
+            "status": "coming_soon",
+            "phase": 2,
+            "seo": {
+              "title": "Merge PDF files online, without keeping them",
+              "description": "Combine PDF files into one in seconds. Your files are never stored: the result comes straight back in the response.",
+              "keywords": ["merge pdf", "combine pdf", "join pdf files"],
+              "faq": [
+                {
+                  "question": "Are my files stored after merging?",
+                  "answer": "No. The file is processed in memory and the result is returned in the same request. Nothing is saved on our servers."
+                }
+              ]
+            }
+          }
+        ]
+      ]
+    }
+  },
+  "$defs": {
+    "ToolCategory": {
+      "description": "Catalog grouping. Adding a category is a minor, additive change; clients must render unknown categories gracefully.",
+      "type": "string",
+      "enum": ["organize", "optimize", "convert-to-pdf", "convert-from-pdf", "compare"],
+      "examples": ["organize"]
+    },
+    "InputKind": {
+      "description": "Kind of input a tool accepts. file = multipart upload, url = web page address in a JSON body.",
+      "type": "string",
+      "enum": ["file", "url"],
+      "examples": ["file"]
+    },
+    "OutputKind": {
+      "description": "What a successful response carries. pdf, zip and txt are attachments; json is an inline JSON body.",
+      "type": "string",
+      "enum": ["pdf", "zip", "txt", "json"],
+      "examples": ["pdf"]
+    },
+    "ToolStatus": {
+      "description": "available = the endpoint exists and works. coming_soon = listed for SEO and roadmap; the endpoint does not exist yet (framework 404).",
+      "type": "string",
+      "enum": ["available", "coming_soon"],
+      "examples": ["coming_soon"]
+    },
+    "ToolFaqItem": {
+      "description": "One FAQ entry.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["question", "answer"],
+      "properties": {
+        "question": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "examples": ["Are my files stored after merging?"]
+        },
+        "answer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000,
+          "examples": [
+            "No. The file is processed in memory and the result is returned in the same request. Nothing is saved on our servers."
+          ]
+        }
+      },
+      "examples": [
+        {
+          "question": "Are my files stored after merging?",
+          "answer": "No. The file is processed in memory and the result is returned in the same request. Nothing is saved on our servers."
+        }
+      ]
+    },
+    "ToolSeo": {
+      "description": "Search and landing-page metadata.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "description", "keywords"],
+      "properties": {
+        "title": {
+          "description": "HTML title tag.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 70,
+          "examples": ["Merge PDF files online, without keeping them"]
+        },
+        "description": {
+          "description": "Meta description.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 170,
+          "examples": [
+            "Combine PDF files into one in seconds. Your files are never stored: the result comes straight back in the response."
+          ]
+        },
+        "keywords": {
+          "description": "Target search phrases.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 60 },
+          "minItems": 1,
+          "maxItems": 15,
+          "uniqueItems": true,
+          "examples": [["merge pdf", "combine pdf", "join pdf files"]]
+        },
+        "faq": {
+          "description": "Optional FAQ entries rendered on the landing page and as structured data.",
+          "type": "array",
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/ToolFaqItem" }
+        }
+      },
+      "examples": [
+        {
+          "title": "Merge PDF files online, without keeping them",
+          "description": "Combine PDF files into one in seconds. Your files are never stored: the result comes straight back in the response.",
+          "keywords": ["merge pdf", "combine pdf"]
+        }
+      ]
+    },
+    "Tool": {
+      "description": "One tool in the catalog. Its endpoint is POST /api/v1/{slug}.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "slug",
+        "category",
+        "title",
+        "description",
+        "icon",
+        "input_kinds",
+        "accepts",
+        "min_inputs",
+        "max_inputs",
+        "options_schema",
+        "output_kind",
+        "status",
+        "phase",
+        "seo"
+      ],
+      "properties": {
+        "slug": {
+          "description": "Stable kebab-case identifier. It is both the URL path segment (POST /api/v1/{slug}) and the landing-page route (/tools/{slug}). Never reused for a different tool.",
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "minLength": 3,
+          "maxLength": 64,
+          "examples": ["merge-pdf"]
+        },
+        "category": { "$ref": "#/$defs/ToolCategory" },
+        "title": {
+          "description": "Display name.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60,
+          "examples": ["Merge PDF"]
+        },
+        "description": {
+          "description": "One-sentence summary for cards and listings.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "examples": ["Combine several PDF files into one document, in the order you choose."]
+        },
+        "icon": {
+          "description": "Lucide icon name (kebab-case).",
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "maxLength": 40,
+          "examples": ["combine"]
+        },
+        "input_kinds": {
+          "description": "Kinds of input accepted. File tools are [file]; site comparison is [url].",
+          "type": "array",
+          "items": { "$ref": "#/$defs/InputKind" },
+          "minItems": 1,
+          "uniqueItems": true,
+          "examples": [["file"]]
+        },
+        "accepts": {
+          "description": "MIME types accepted when input_kinds contains `file`. Informational for the UI file picker: the server decides by magic-byte sniffing and ignores the client Content-Type. Empty when no file input.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+/[a-z0-9.+-]+$",
+            "maxLength": 127
+          },
+          "uniqueItems": true,
+          "maxItems": 20,
+          "examples": [["application/pdf"]]
+        },
+        "min_inputs": {
+          "description": "Minimum number of inputs (files or URLs) per request.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "examples": [2]
+        },
+        "max_inputs": {
+          "description": "Maximum number of inputs per request. Exceeding it returns too_many_files.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "examples": [10]
+        },
+        "options_schema": {
+          "description": "Name of the schema under components.schemas of shared/openapi.yaml that describes this tool's `options` object, or null when the tool takes no options.",
+          "type": ["string", "null"],
+          "pattern": "^[A-Z][A-Za-z0-9]*Options$",
+          "maxLength": 64,
+          "examples": ["MergePdfOptions", null]
+        },
+        "output_kind": { "$ref": "#/$defs/OutputKind" },
+        "status": { "$ref": "#/$defs/ToolStatus" },
+        "phase": {
+          "description": "Delivery phase in which the tool becomes available. Informational (roadmap and coming-soon UI).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "examples": [2]
+        },
+        "seo": { "$ref": "#/$defs/ToolSeo" }
+      },
+      "allOf": [
+        {
+          "description": "Catalog-data rule (not mirrored in OpenAPI): file tools must declare at least one accepted MIME type.",
+          "if": {
+            "properties": { "input_kinds": { "type": "array", "contains": { "const": "file" } } },
+            "required": ["input_kinds"]
+          },
+          "then": { "properties": { "accepts": { "type": "array", "minItems": 1 } } }
+        }
+      ],
+      "examples": [
+        {
+          "slug": "compare-sites",
+          "category": "compare",
+          "title": "Compare two web pages",
+          "description": "Fetch two public web pages and see exactly what differs between them.",
+          "icon": "git-compare",
+          "input_kinds": ["url"],
+          "accepts": [],
+          "min_inputs": 2,
+          "max_inputs": 2,
+          "options_schema": "CompareSitesOptions",
+          "output_kind": "json",
+          "status": "coming_soon",
+          "phase": 3,
+          "seo": {
+            "title": "Compare two web pages and see the differences",
+            "description": "Paste two URLs and get a line-by-line diff of their text content. Nothing is stored.",
+            "keywords": ["compare websites", "webpage diff"]
+          }
+        }
+      ]
+    }
+  }
+}

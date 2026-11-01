@@ -1,0 +1,50 @@
+{
+  "name": "docs-tools-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint --max-warnings=0",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "api:types": "openapi-typescript ../shared/openapi.yaml --default-non-nullable false -o src/lib/api/schema.d.ts"
+  },
+  "dependencies": {
+    "client-only": "^0.0.1",
+    "lucide-react": "^1.65.0",
+    "next": "16.4.3",
+    "next-themes": "^0.4.6",
+    "openapi-fetch": "^0.17.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@tailwindcss/turbopack": "^4",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.1.2",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.3",
+    "jsdom": "^30.1.3",
+    "openapi-typescript": "^7.13.0",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^5.0.5",
+    "yaml": "^2.9.1"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

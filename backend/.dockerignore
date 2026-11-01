@@ -1,0 +1,42 @@
+# Build context is backend/. Allowlist-style: exclude everything that is not
+# needed to install and run the app. Keeps secrets and caches out of the image.
+**/.venv
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.coverage
+**/.coverage.*
+**/coverage.xml
+**/htmlcov
+**/.hypothesis
+**/.tox
+**/*.egg-info
+**/build
+**/dist
+
+# never ship local config, secrets or workspace data
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+.data
+workspaces
+work
+
+# not needed at runtime
+tests
+shared
+scripts
+server.py
+.vercel
+**/.git
+**/.gitignore
+**/.DS_Store
+**/.idea
+**/.vscode
+Dockerfile
+.dockerignore
+*.md
+!README.md
