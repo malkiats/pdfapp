@@ -209,7 +209,7 @@ paths:
                         max_inputs: 10
                         options_schema: MergePdfOptions
                         output_kind: pdf
-                        status: coming_soon
+                        status: available
                         phase: 2
                         seo:
                           title: Merge PDF files online, without keeping them
@@ -1462,7 +1462,7 @@ components:
                 max_inputs: 10
                 options_schema: MergePdfOptions
                 output_kind: pdf
-                status: coming_soon
+                status: available
                 phase: 2
                 seo:
                   title: Merge PDF files online, without keeping them

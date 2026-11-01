@@ -17,7 +17,7 @@
       "max_inputs": 20,
       "options_schema": "OptionsMerge",
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 2,
       "requires_ai_consent": false,
       "seo": {

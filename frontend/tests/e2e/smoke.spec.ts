@@ -24,12 +24,12 @@ test.describe("smoke", () => {
     await expect(page).toHaveURL(/\/tools\/merge-pdf$/);
   });
 
-  test("tool page renders with a disabled coming-soon upload area", async ({ page }) => {
+  test("Merge PDF tool page renders an enabled upload area", async ({ page }) => {
     const response = await page.goto("/tools/merge-pdf");
     expect(response?.status()).toBe(200);
     await expect(page.getByRole("heading", { level: 1, name: "Merge PDF" })).toBeVisible();
-    await expect(page.getByText("Coming soon", { exact: true }).first()).toBeVisible();
-    await expect(page.getByRole("button", { name: "Choose files" })).toBeDisabled();
+    await expect(page.getByText("Coming soon", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Choose files" })).toBeEnabled();
     await expect(page.getByRole("heading", { name: "How it works" })).toBeVisible();
     await expect(page).toHaveTitle(/Merge PDF/);
     const canonical = await page.locator('link[rel="canonical"]').getAttribute("href");
