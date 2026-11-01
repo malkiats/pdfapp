@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -25,7 +26,12 @@ from pdfapp.backend.app.api import health
 log = get_logger(__name__)
 
 # Load catalog at module level
-_CATALOG_PATH = Path(__file__).resolve().parents[2] / "shared" / "tool-catalog.json"
+_CATALOG_PATH = Path(
+    os.environ.get(
+        "APP_CATALOG__PATH",
+        Path(__file__).resolve().parents[2] / "shared" / "tool-catalog.json",
+    )
+)
 _catalog_data: dict | None = None
 _catalog_etag: str | None = None
 

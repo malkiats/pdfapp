@@ -24,22 +24,22 @@ _marketplace_redis = os.environ.get("REDIS_URL") or os.environ.get("KV_URL")
 if _marketplace_redis:
     os.environ.setdefault("APP_REDIS__URL", _marketplace_redis)
 
-import app as app_package  # noqa: E402
+import types  # noqa: E402
 
-# Allow modules written as `pdfapp.backend.app.*` to resolve when the backend
-# directory is the deployment root instead of the repository root.
-import types
-
+# Allow repository-style imports (`pdfapp.backend.app.*`) to resolve when
+# Vercel deploys the backend directory as an isolated project root.
 pdfapp_package = types.ModuleType("pdfapp")
-pdfapp_package.__path__ = [str(_HERE.parent)]  # type: ignore[attr-defined]
+pdfapp_package.__path__ = []  # type: ignore[attr-defined]
 sys.modules.setdefault("pdfapp", pdfapp_package)
 
 pdfapp_backend_package = types.ModuleType("pdfapp.backend")
 pdfapp_backend_package.__path__ = [str(_HERE)]  # type: ignore[attr-defined]
 sys.modules.setdefault("pdfapp.backend", pdfapp_backend_package)
 
-sys.modules.setdefault("pdfapp.backend.app", app_package)
+pdfapp_app_package = types.ModuleType("pdfapp.backend.app")
+pdfapp_app_package.__path__ = [str(_HERE / "app")]  # type: ignore[attr-defined]
+sys.modules.setdefault("pdfapp.backend.app", pdfapp_app_package)
 
-from app.main import create_app  # noqa: E402
+from pdfapp.backend.app.main import create_app  # noqa: E402
 
 app = create_app()
