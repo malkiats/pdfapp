@@ -38,7 +38,7 @@ FROM ghcr.io/astral-sh/uv:0.13.1@sha256:4a1f3666816dafadd20ceb71eac9a7d56d7ef302
 # ---------------------------------------------------------------------------
 # builder: resolve and install locked dependencies into /srv/backend/.venv
 # ---------------------------------------------------------------------------
-FROM python:3.12.16-slim-trixie@sha256:8523d6abeb48ceae0b7240d30c5808fc26cb79c1a635bacdf19cf3baecfbec07 AS builder
+FROM python:3.15.0-slim-trixie@sha256:f5b92f2a669a4c347044f29367f31983280b648250ca94dea66f98c53bc87e58 AS builder
 
 COPY --from=uv /uv /uvx /usr/local/bin/
 
@@ -66,7 +66,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ---------------------------------------------------------------------------
 # base-runtime: minimal OS + venv + app, non-root
 # ---------------------------------------------------------------------------
-FROM python:3.12.16-slim-trixie@sha256:8523d6abeb48ceae0b7240d30c5808fc26cb79c1a635bacdf19cf3baecfbec07 AS base-runtime
+FROM python:3.15.0-slim-trixie@sha256:f5b92f2a669a4c347044f29367f31983280b648250ca94dea66f98c53bc87e58 AS base-runtime
 
 # Writable mount points /work and /data/workspaces are created here, owned by
 # 10001 with mode 0700; tmpfs / volumes are mounted over them at runtime.
