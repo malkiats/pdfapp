@@ -40,6 +40,24 @@ pdfapp_app_package = types.ModuleType("pdfapp.backend.app")
 pdfapp_app_package.__path__ = [str(_HERE / "app")]  # type: ignore[attr-defined]
 sys.modules.setdefault("pdfapp.backend.app", pdfapp_app_package)
 
-from pdfapp.backend.app.main import create_app  # noqa: E402
+try:
+    from pdfapp.backend.app.main import create_app  # noqa: E402
 
-app = create_app()
+    app = create_app()
+except Exception as exc:
+    # Keep the function invocable even if application startup fails. This
+    # exposes only the exception type/message, not stack traces or secrets.
+    from fastapi import FastAPI  # noqa: E402
+
+    fallback = FastAPI(title="Document Tools API - startup error", docs_url=None)
+
+    @fallback.get("/")
+    @fallback.get("/health")
+    async def startup_error_root():
+        return {
+            "status": "error",
+            "error_type": type(exc).__name__,
+            "error_message": str(exc),
+        }
+
+    app = fallback
