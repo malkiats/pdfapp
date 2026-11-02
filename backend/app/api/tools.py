@@ -1,493 +1,257 @@
-"""Tool catalog and tool endpoints."""
+"""Tool catalog and the synchronous tool endpoint: POST /api/v1/{slug}."""
 
 from __future__ import annotations
 
 import hashlib
 import json
-from typing import Annotated, Final
+from collections.abc import Callable
+from typing import Annotated, Any, Final
+from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Header, Query, Request
 from fastapi.responses import Response
-
 from pdfapp.backend.app.core.errors import ApiError
 from pdfapp.backend.app.core.logging import get_logger
-from pdfapp.backend.app.core.scratch import cleanup_scratch_dir, create_scratch_dir
-from pdfapp.backend.app.lib.compress_pdf import compress_pdf as compress_pdf_impl
-from pdfapp.backend.app.lib.extract_text import extract_text as extract_text_impl
-from pdfapp.backend.app.lib.image_to_pdf import image_to_pdf as image_to_pdf_impl
-from pdfapp.backend.app.lib.merge_pdf import merge_pdf as merge_pdf_impl
+from pdfapp.backend.app.lib import ai, pdf_ops, web
+from pdfapp.backend.app.lib.common import ToolInput, ToolResult
 from pdfapp.backend.app.lib.multipart import parse_multipart
-from pdfapp.backend.app.lib.organize_pdf import organize_pdf as organize_pdf_impl
-from pdfapp.backend.app.lib.pdf_to_images import pdf_to_images as pdf_to_images_impl
-from pdfapp.backend.app.lib.rotate_pdf import rotate_pdf as rotate_pdf_impl
-from pdfapp.backend.app.lib.split_pdf import split_pdf as split_pdf_impl
+from starlette.concurrency import run_in_threadpool
 
 router = APIRouter(prefix="/api/v1", tags=["tools"])
 log = get_logger(__name__)
 
 CATALOG_CACHE_CONTROL: Final = "public, max-age=300"
 TOOL_CACHE_CONTROL: Final = "no-store"
+# Vercel Functions cannot return bodies above 4.5 MB.
+MAX_RESULT_BYTES: Final = 4_400_000
 
-# Allowed MIME types per tool
-ALLOWED_MIMES = {
-    "merge-pdf": {"application/pdf"},
-    "split-pdf": {"application/pdf"},
-    "organize-pdf": {"application/pdf"},
-    "rotate-pdf": {"application/pdf"},
-    "compress-pdf": {"application/pdf"},
-    "image-to-pdf": {"image/png", "image/jpeg", "image/jpg", "image/webp"},
-    "pdf-to-images": {"application/pdf"},
-    "extract-text": {"application/pdf"},
+Handler = Callable[[ToolInput], ToolResult]
+
+HANDLERS: Final[dict[str, Handler]] = {
+    # organize
+    "merge-pdf": pdf_ops.merge_pdf,
+    "split-pdf": pdf_ops.split_pdf,
+    "remove-pages": pdf_ops.remove_pages,
+    "extract-pages": pdf_ops.extract_pages,
+    "organize-pdf": pdf_ops.organize_pdf,
+    "scan-to-pdf": lambda i: pdf_ops.images_to_pdf(i, "scan-to-pdf"),
+    # optimize
+    "compress-pdf": pdf_ops.compress_pdf,
+    "repair-pdf": pdf_ops.repair_pdf,
+    # convert
+    "jpg-to-pdf": lambda i: pdf_ops.images_to_pdf(i, "jpg-to-pdf"),
+    "png-to-pdf": lambda i: pdf_ops.images_to_pdf(i, "png-to-pdf"),
+    "pdf-to-jpg": lambda i: pdf_ops.pdf_to_images(i, "jpg", "pdf-to-jpg"),
+    "pdf-to-png": lambda i: pdf_ops.pdf_to_images(i, "png", "pdf-to-png"),
+    # edit
+    "rotate-pdf": pdf_ops.rotate_pdf,
+    "add-page-numbers": pdf_ops.add_page_numbers,
+    "add-watermark": pdf_ops.add_watermark,
+    "crop-pdf": pdf_ops.crop_pdf,
+    # security
+    "unlock-pdf": pdf_ops.unlock_pdf,
+    "protect-pdf": pdf_ops.protect_pdf,
+    "compare-pdf": pdf_ops.compare_pdf,
+    # AI (only called with explicit consent)
+    "summarize-pdf": ai.summarize_pdf,
+    "summarize-article": ai.summarize_article,
+    "translate-pdf": ai.translate_pdf,
+    "translate-text": ai.translate_text,
+    "pdf-to-markdown": ai.pdf_to_markdown,
+    "extract-key-points": ai.extract_key_points,
+    "ask-pdf": ai.ask_pdf,
+    # compare
+    "compare-webpages": web.compare_webpages,
 }
+
+_MAX_TEXT_CHARS: Final = 100_000
 
 
 def _make_etag(data: bytes) -> str:
-    """Create an ETag from data."""
-    return f'"{hashlib.md5(data).hexdigest()[:8]}"'  # noqa: S324
+    return f'"{hashlib.md5(data).hexdigest()[:16]}"'  # noqa: S324 - cache key, not security
+
+
+def _etag_matches(header: str | None, etag: str) -> bool:
+    if not header:
+        return False
+    if header.strip() == "*":
+        return True
+    candidates = {c.strip().removeprefix("W/") for c in header.split(",")}
+    return etag in candidates
 
 
 def _sniff_mime(data: bytes) -> str:
-    """Guess MIME type from magic bytes."""
+    """Decide the type from magic bytes; never trust the client's Content-Type."""
     if data.startswith(b"%PDF"):
         return "application/pdf"
     if data.startswith(b"\xff\xd8\xff"):
         return "image/jpeg"
-    if data.startswith(b"\x89PNG"):
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
         return "image/png"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    if data[:4] in (b"II*\x00", b"MM\x00*"):
+        return "image/tiff"
+    if b"\x00" not in data[:4096]:
+        try:
+            data[:65536].decode("utf-8")
+            return "text/plain"
+        except UnicodeDecodeError:
+            pass
     return "application/octet-stream"
 
 
-def _validate_files(files: list[bytes], expected_mimes: set[str]) -> None:
-    """Validate that all files have the expected MIME types."""
-    for i, file_bytes in enumerate(files):
-        mime = _sniff_mime(file_bytes)
-        if mime not in expected_mimes:
-            raise ApiError(
-                400,
-                "unsupported_type",
-                detail="One of the files is not a type this tool accepts.",
-                errors=[
-                    {
-                        "pointer": f"/files/{i}",
-                        "code": "unsupported_type",
-                        "message": "File type not accepted.",
-                    }
-                ],
-            )
+def _accepted(mime: str, accepts: list[str]) -> bool:
+    normalized = {"image/jpg": "image/jpeg", "text/markdown": "text/plain"}
+    allowed = {normalized.get(a, a) for a in accepts}
+    return mime in allowed
 
 
-@router.get(
-    "/tools",
-    summary="List the tool catalog",
-    responses={
-        200: {"description": "The catalog."},
-        304: {"description": "Catalog unchanged."},
-    },
-)
+def _find_tool(request: Request, slug: str) -> dict[str, Any]:
+    for tool in request.app.state.catalog_data.get("tools", []):
+        if tool.get("slug") == slug:
+            return tool  # type: ignore[no-any-return]
+    raise ApiError(404, "not_found", detail="No such tool.")
+
+
+def _bad(code: str, message: str, pointer: str, status: int = 400) -> ApiError:
+    return ApiError(
+        status,
+        code,
+        detail=message,
+        errors=[{"pointer": pointer, "code": code, "message": message}],
+    )
+
+
+@router.get("/tools", summary="List the tool catalog")
 async def listTools(  # noqa: N802
     request: Request,
-    category: Annotated[
-        str | None, Query(description="Return only tools in this category.")
-    ] = None,
-    status: Annotated[
-        str | None, Query(description="Return only tools with this status.")
-    ] = None,
-    if_none_match: Annotated[
-        str | None,
-        Header(
-            alias="If-None-Match",
-            max_length=200,
-            description="ETag from a previous response.",
-        ),
-    ] = None,
+    category: Annotated[str | None, Query(max_length=40)] = None,
+    status: Annotated[str | None, Query(max_length=20)] = None,
+    if_none_match: Annotated[str | None, Header(alias="If-None-Match", max_length=200)] = None,
 ) -> Response:
     """Returns the catalog plus global limits. Cacheable with ETag."""
-    catalog = request.app.state.catalog_data
     settings = request.app.state.settings
-
-    # Filter by category and status if provided
-    items = catalog.get("tools", [])
+    items = request.app.state.catalog_data.get("tools", [])
     if category:
         items = [t for t in items if t.get("category") == category]
     if status:
         items = [t for t in items if t.get("status") == status]
 
-    # Build response
-    body_dict = {
-        "items": items,
-        "limits": {
-            "max_request_bytes": settings.limits.max_request_bytes,
-            "max_pages": settings.limits.max_pages,
+    body = json.dumps(
+        {
+            "items": items,
+            "limits": {
+                "max_request_bytes": settings.limits.max_request_bytes,
+                "max_pages": settings.limits.max_pages,
+            },
         },
-    }
-    body = json.dumps(body_dict, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
     etag = _make_etag(body)
+    headers = {"ETag": etag, "Cache-Control": CATALOG_CACHE_CONTROL}
+    if _etag_matches(if_none_match, etag):
+        return Response(status_code=304, headers=headers)
+    return Response(content=body, media_type="application/json", headers=headers)
 
-    # 304 if ETag matches
-    if if_none_match and if_none_match.strip('"') == etag.strip('"'):
-        return Response(
-            status_code=304,
-            headers={"ETag": etag, "Cache-Control": CATALOG_CACHE_CONTROL},
-        )
 
+@router.get("/tools/{slug}", summary="Get one tool")
+async def getTool(request: Request, slug: str) -> Response:  # noqa: N802
+    body = json.dumps(_find_tool(request, slug), ensure_ascii=False).encode("utf-8")
     return Response(
         content=body,
         media_type="application/json",
-        headers={
-            "ETag": etag,
-            "Cache-Control": CATALOG_CACHE_CONTROL,
-            "RateLimit-Limit": "999",
-            "RateLimit-Remaining": "999",
-            "RateLimit-Reset": "60",
-        },
+        headers={"ETag": _make_etag(body), "Cache-Control": CATALOG_CACHE_CONTROL},
     )
 
 
-@router.post(
-    "/merge-pdf",
-    summary="Merge PDF files",
-    responses={
-        200: {"description": "Merged PDF"},
-        400: {"description": "Bad request"},
-        413: {"description": "Too large"},
-        422: {"description": "Can't process"},
-        504: {"description": "Timeout"},
-    },
-)
-async def mergePdf(request: Request) -> Response:  # noqa: N802
-    """Merge PDF files (2-20, in specified order)."""
-    scratch_dir = create_scratch_dir()
+@router.post("/{slug}", summary="Run a tool")
+async def runTool(request: Request, slug: str) -> Response:  # noqa: N802
+    tool = _find_tool(request, slug)
+    handler = HANDLERS.get(slug)
+    if tool.get("status") != "available" or handler is None:
+        raise ApiError(404, "not_found", detail="This tool is not available yet.")
+
+    content_type = request.headers.get("content-type", "")
     try:
         body = await request.body()
-        content_type = request.headers.get("content-type", "")
+        if content_type.startswith("application/x-www-form-urlencoded"):
+            form: dict[str, list[bytes] | str] = {
+                k: v[-1] for k, v in parse_qs(body.decode("utf-8"), max_num_fields=20).items()
+            }
+        else:
+            form = parse_multipart(body, content_type)
+    except (ValueError, UnicodeDecodeError) as e:
+        raise ApiError(400, "bad_request", detail="Send the request as multipart/form-data.") from e
 
-        # Parse multipart form data
-        try:
-            form_data = parse_multipart(body, content_type)
-        except Exception as e:
-            msg = "The request body could not be parsed."
-            raise ApiError(400, "bad_request", detail=msg) from e
+    raw_files = form.get("files", [])
+    files = raw_files if isinstance(raw_files, list) else []
+    options_raw = form.get("options", "{}")
+    try:
+        options = json.loads(options_raw) if isinstance(options_raw, str) and options_raw else {}
+    except json.JSONDecodeError as e:
+        raise ApiError(400, "validation_error", detail="Options must be valid JSON.") from e
+    if not isinstance(options, dict):
+        raise ApiError(400, "validation_error", detail="Options must be a JSON object.")
 
-        # Extract files and options
-        files = form_data.get("files", [])
-        if not isinstance(files, list):
-            files = [files]  # type: ignore[list-item]
+    def text_field(name: str) -> str:
+        value = form.get(name, "")
+        return value if isinstance(value, str) else ""
 
-        options_str = form_data.get("options", "{}")
-        try:
-            options = (
-                json.loads(options_str)  # type: ignore[arg-type]
-                if isinstance(options_str, str)
-                else options_str
-            )
-        except json.JSONDecodeError as e:
-            msg = "Options must be valid JSON."
-            raise ApiError(400, "validation_error", detail=msg) from e
+    text = text_field("text")
+    if len(text) > _MAX_TEXT_CHARS:
+        raise _bad("validation_error", "The text is too long.", "/text")
+    urls = [u for u in (text_field("url_a") or text_field("url"), text_field("url_b")) if u.strip()]
 
-        # Validate file types
-        _validate_files(files, ALLOWED_MIMES["merge-pdf"])  # type: ignore[arg-type]
+    kinds: list[str] = tool.get("input_kinds", [])
+    if "file" in kinds and (files or kinds == ["file"]):
+        lo, hi = int(tool.get("min_inputs", 1)), int(tool.get("max_inputs", 1))
+        if len(files) < lo:
+            raise _bad("validation_error", f"This tool needs at least {lo} file(s).", "/files")
+        if len(files) > hi:
+            raise _bad("too_many_files", f"This tool accepts at most {hi} file(s).", "/files")
+        for i, data in enumerate(files):
+            if not _accepted(_sniff_mime(data), tool.get("accepts", [])):
+                raise _bad("unsupported_type", "File type not accepted.", f"/files/{i}")
+    elif kinds == ["url"] and len(urls) < int(tool.get("min_inputs", 1)):
+        raise _bad("validation_error", "Enter the page address(es).", "/url_a")
+    elif not files and not urls and not text.strip():
+        raise _bad("validation_error", "Provide some input.", "/text")
 
-        # Call tool
-        result = merge_pdf_impl(files, options, scratch_dir)  # type: ignore[arg-type]
+    if tool.get("requires_ai_consent") and text_field("ai_consent").lower() != "true":
+        raise _bad("validation_error", "Consent is required for AI processing.", "/ai_consent")
 
-        # Return as file
-        return Response(
-            content=result,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": 'attachment; filename="merge-pdf-result.pdf"',
-                "Cache-Control": TOOL_CACHE_CONTROL,
-                "RateLimit-Limit": "999",
-                "RateLimit-Remaining": "999",
-                "RateLimit-Reset": "60",
-            },
-        )
-
+    settings = request.app.state.settings
+    tool_input = ToolInput(
+        files=files,
+        options=options,
+        text=text,
+        urls=urls,
+        max_pages=settings.limits.max_pages,
+        groq_api_key=settings.groq_api_key.get_secret_value() if settings.groq_api_key else None,
+        groq_model=settings.groq_model,
+    )
+    try:
+        result = await run_in_threadpool(handler, tool_input)
     except ApiError:
         raise
     except Exception as e:
-        log.error("merge_pdf_handler_error", error_class=type(e).__name__)
-        raise ApiError(500, "internal_error", detail="Something went wrong.") from e
-    finally:
-        cleanup_scratch_dir(scratch_dir)
+        log.error("tool_failed", tool=slug, error_class=type(e).__name__)
+        raise ApiError(422, "processing_failed", detail="The file could not be processed.") from e
 
-
-# Stubs for remaining Phase 2 tools (will be implemented similarly)
-
-@router.post("/split-pdf", summary="Split PDF")
-async def splitPdf(request: Request) -> Response:  # noqa: N802
-    """Split PDF into pages."""
-    scratch_dir = create_scratch_dir()
-    try:
-        body = await request.body()
-        content_type = request.headers.get("content-type", "")
-        form_data = parse_multipart(body, content_type)
-        files = form_data.get("files", [])
-        if not isinstance(files, list):
-            files = [files]  # type: ignore[list-item]
-        options_str = form_data.get("options", "{}")
-        options = (
-            json.loads(options_str)  # type: ignore[arg-type]
-            if isinstance(options_str, str)
-            else options_str
+    if len(result.content) > MAX_RESULT_BYTES:
+        raise ApiError(
+            413,
+            "result_too_large",
+            detail="The result is too large to download. Try fewer pages or lower quality.",
         )
-        _validate_files(files, ALLOWED_MIMES["split-pdf"])  # type: ignore[arg-type]
-        result = split_pdf_impl(files, options, scratch_dir)  # type: ignore[arg-type]
-        return Response(
-            content=result,
-            media_type="application/zip",
-            headers={
-                "Content-Disposition": 'attachment; filename="split-pdf-result.zip"',
-                "Cache-Control": TOOL_CACHE_CONTROL,
-                "RateLimit-Limit": "999",
-                "RateLimit-Remaining": "999",
-                "RateLimit-Reset": "60",
-            },
-        )
-    except ApiError:
-        raise
-    except Exception as e:
-        log.error("split_pdf_handler_error", error_class=type(e).__name__)
-        raise ApiError(500, "internal_error", detail="Something went wrong.") from e
-    finally:
-        cleanup_scratch_dir(scratch_dir)
-
-
-@router.post("/organize-pdf", summary="Organize PDF pages")
-async def organizePdf(request: Request) -> Response:  # noqa: N802
-    """Organize PDF pages."""
-    scratch_dir = create_scratch_dir()
-    try:
-        body = await request.body()
-        content_type = request.headers.get("content-type", "")
-        form_data = parse_multipart(body, content_type)
-        files = form_data.get("files", [])
-        if not isinstance(files, list):
-            files = [files]  # type: ignore[list-item]
-        options_str = form_data.get("options", "{}")
-        options = (
-            json.loads(options_str)  # type: ignore[arg-type]
-            if isinstance(options_str, str)
-            else options_str
-        )
-        _validate_files(files, ALLOWED_MIMES["organize-pdf"])  # type: ignore[arg-type]
-        result = organize_pdf_impl(files, options, scratch_dir)  # type: ignore[arg-type]
-        return Response(
-            content=result,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": 'attachment; filename="organize-pdf-result.pdf"',
-                "Cache-Control": TOOL_CACHE_CONTROL,
-                "RateLimit-Limit": "999",
-                "RateLimit-Remaining": "999",
-                "RateLimit-Reset": "60",
-            },
-        )
-    except ApiError:
-        raise
-    except Exception as e:
-        log.error("organize_pdf_handler_error", error_class=type(e).__name__)
-        raise ApiError(500, "internal_error", detail="Something went wrong.") from e
-    finally:
-        cleanup_scratch_dir(scratch_dir)
-
-
-@router.post("/rotate-pdf", summary="Rotate PDF pages")
-async def rotatePdf(request: Request) -> Response:  # noqa: N802
-    """Rotate PDF pages."""
-    scratch_dir = create_scratch_dir()
-    try:
-        body = await request.body()
-        content_type = request.headers.get("content-type", "")
-        form_data = parse_multipart(body, content_type)
-        files = form_data.get("files", [])
-        if not isinstance(files, list):
-            files = [files]  # type: ignore[list-item]
-        options_str = form_data.get("options", "{}")
-        options = (
-            json.loads(options_str)  # type: ignore[arg-type]
-            if isinstance(options_str, str)
-            else options_str
-        )
-        _validate_files(files, ALLOWED_MIMES["rotate-pdf"])  # type: ignore[arg-type]
-        result = rotate_pdf_impl(files, options, scratch_dir)  # type: ignore[arg-type]
-        return Response(
-            content=result,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": 'attachment; filename="rotate-pdf-result.pdf"',
-                "Cache-Control": TOOL_CACHE_CONTROL,
-                "RateLimit-Limit": "999",
-                "RateLimit-Remaining": "999",
-                "RateLimit-Reset": "60",
-            },
-        )
-    except ApiError:
-        raise
-    except Exception as e:
-        log.error("rotate_pdf_handler_error", error_class=type(e).__name__)
-        raise ApiError(500, "internal_error", detail="Something went wrong.") from e
-    finally:
-        cleanup_scratch_dir(scratch_dir)
-
-
-@router.post("/compress-pdf", summary="Compress PDF")
-async def compressPdf(request: Request) -> Response:  # noqa: N802
-    """Compress PDF."""
-    scratch_dir = create_scratch_dir()
-    try:
-        body = await request.body()
-        content_type = request.headers.get("content-type", "")
-        form_data = parse_multipart(body, content_type)
-        files = form_data.get("files", [])
-        if not isinstance(files, list):
-            files = [files]  # type: ignore[list-item]
-        options_str = form_data.get("options", "{}")
-        options = (
-            json.loads(options_str)  # type: ignore[arg-type]
-            if isinstance(options_str, str)
-            else options_str
-        )
-        _validate_files(files, ALLOWED_MIMES["compress-pdf"])  # type: ignore[arg-type]
-        result = compress_pdf_impl(files, options, scratch_dir)  # type: ignore[arg-type]
-        return Response(
-            content=result,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": 'attachment; filename="compress-pdf-result.pdf"',
-                "Cache-Control": TOOL_CACHE_CONTROL,
-                "RateLimit-Limit": "999",
-                "RateLimit-Remaining": "999",
-                "RateLimit-Reset": "60",
-            },
-        )
-    except ApiError:
-        raise
-    except Exception as e:
-        log.error("compress_pdf_handler_error", error_class=type(e).__name__)
-        raise ApiError(500, "internal_error", detail="Something went wrong.") from e
-    finally:
-        cleanup_scratch_dir(scratch_dir)
-
-
-@router.post("/image-to-pdf", summary="Convert images to PDF")
-async def imageToPdf(request: Request) -> Response:  # noqa: N802
-    """Convert images to PDF."""
-    scratch_dir = create_scratch_dir()
-    try:
-        body = await request.body()
-        content_type = request.headers.get("content-type", "")
-        form_data = parse_multipart(body, content_type)
-        files = form_data.get("files", [])
-        if not isinstance(files, list):
-            files = [files]  # type: ignore[list-item]
-        options_str = form_data.get("options", "{}")
-        options = (
-            json.loads(options_str)  # type: ignore[arg-type]
-            if isinstance(options_str, str)
-            else options_str
-        )
-        _validate_files(files, ALLOWED_MIMES["image-to-pdf"])  # type: ignore[arg-type]
-        result = image_to_pdf_impl(files, options, scratch_dir)  # type: ignore[arg-type]
-        return Response(
-            content=result,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": 'attachment; filename="image-to-pdf-result.pdf"',
-                "Cache-Control": TOOL_CACHE_CONTROL,
-                "RateLimit-Limit": "999",
-                "RateLimit-Remaining": "999",
-                "RateLimit-Reset": "60",
-            },
-        )
-    except ApiError:
-        raise
-    except Exception as e:
-        log.error("image_to_pdf_handler_error", error_class=type(e).__name__)
-        raise ApiError(500, "internal_error", detail="Something went wrong.") from e
-    finally:
-        cleanup_scratch_dir(scratch_dir)
-
-
-@router.post("/pdf-to-images", summary="Convert PDF to images")
-async def pdfToImages(request: Request) -> Response:  # noqa: N802
-    """Convert PDF to images."""
-    scratch_dir = create_scratch_dir()
-    try:
-        body = await request.body()
-        content_type = request.headers.get("content-type", "")
-        form_data = parse_multipart(body, content_type)
-        files = form_data.get("files", [])
-        if not isinstance(files, list):
-            files = [files]  # type: ignore[list-item]
-        options_str = form_data.get("options", "{}")
-        options = (
-            json.loads(options_str)  # type: ignore[arg-type]
-            if isinstance(options_str, str)
-            else options_str
-        )
-        _validate_files(files, ALLOWED_MIMES["pdf-to-images"])  # type: ignore[arg-type]
-        result = pdf_to_images_impl(files, options, scratch_dir)  # type: ignore[arg-type]
-        return Response(
-            content=result,
-            media_type="application/zip",
-            headers={
-                "Content-Disposition": 'attachment; filename="pdf-to-images-result.zip"',
-                "Cache-Control": TOOL_CACHE_CONTROL,
-                "RateLimit-Limit": "999",
-                "RateLimit-Remaining": "999",
-                "RateLimit-Reset": "60",
-            },
-        )
-    except ApiError:
-        raise
-    except Exception as e:
-        log.error("pdf_to_images_handler_error", error_class=type(e).__name__)
-        raise ApiError(500, "internal_error", detail="Something went wrong.") from e
-    finally:
-        cleanup_scratch_dir(scratch_dir)
-
-
-@router.post("/extract-text", summary="Extract text from PDF")
-async def extractText(request: Request) -> Response:  # noqa: N802
-    """Extract text from PDF."""
-    scratch_dir = create_scratch_dir()
-    try:
-        body = await request.body()
-        content_type = request.headers.get("content-type", "")
-        form_data = parse_multipart(body, content_type)
-        files = form_data.get("files", [])
-        if not isinstance(files, list):
-            files = [files]  # type: ignore[list-item]
-        options_str = form_data.get("options", "{}")
-        options = (
-            json.loads(options_str)  # type: ignore[arg-type]
-            if isinstance(options_str, str)
-            else options_str
-        )
-        _validate_files(files, ALLOWED_MIMES["extract-text"])  # type: ignore[arg-type]
-        result = extract_text_impl(files, options, scratch_dir)  # type: ignore[arg-type]
-        return Response(
-            content=result,
-            media_type="text/plain; charset=utf-8",
-            headers={
-                "Content-Disposition": 'attachment; filename="extract-text-result.txt"',
-                "Cache-Control": TOOL_CACHE_CONTROL,
-                "RateLimit-Limit": "999",
-                "RateLimit-Remaining": "999",
-                "RateLimit-Reset": "60",
-            },
-        )
-    except ApiError:
-        raise
-    except Exception as e:
-        log.error("extract_text_handler_error", error_class=type(e).__name__)
-        raise ApiError(500, "internal_error", detail="Something went wrong.") from e
-    finally:
-        cleanup_scratch_dir(scratch_dir)
-
-
-@router.post("/compare-sites", summary="Compare two web pages")
-async def compareSites(request: Request) -> Response:  # noqa: N802
-    """Compare two web pages. Phase 3 - coming soon."""
-    raise ApiError(404, "not_found", detail="This endpoint is not yet implemented.")
+    log.info("tool_succeeded", tool=slug, output_bytes=len(result.content))
+    return Response(
+        content=result.content,
+        media_type=result.media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{result.filename}"',
+            "Cache-Control": TOOL_CACHE_CONTROL,
+        },
+    )

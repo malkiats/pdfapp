@@ -10,8 +10,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from pdfapp.backend.app.api import tools
+from pdfapp.backend.app.api import health, tools
 from pdfapp.backend.app.core.config import get_settings
 from pdfapp.backend.app.core.logging import configure_logging, get_logger
 from pdfapp.backend.app.middleware.errors import register_exception_handlers
@@ -21,7 +20,6 @@ from pdfapp.backend.app.middleware.http import (
     SecurityHeadersMiddleware,
 )
 from pdfapp.backend.app.middleware.rate_limit import InMemoryRateLimiter, RateLimitMiddleware
-from pdfapp.backend.app.api import health
 
 log = get_logger(__name__)
 
@@ -80,25 +78,26 @@ def create_app(settings=None) -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Middleware stack (order matters)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],  # Phase 1: anonymous, no auth
-        allow_methods=["GET", "POST", "OPTIONS"],
-        allow_headers=["Content-Type", "If-None-Match", "X-Request-Id"],
-        allow_credentials=False,
-        max_age=300,
-    )
-    app.add_middleware(SecurityHeadersMiddleware)
-    app.add_middleware(RequestContextMiddleware)
+    # Middleware stack: the LAST one added is the OUTERMOST. CORS must be
+    # outermost so every response (413, 429, errors) carries CORS headers;
+    # otherwise the browser reports any error as a "CORS policy" failure.
     app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.limits.max_request_bytes)
-
-    # Rate limiting middleware
     if settings.rate_limit.enabled:
         rate_limiter = InMemoryRateLimiter(
             requests_per_minute=settings.rate_limit.per_ip_per_minute
         )
         app.add_middleware(RateLimitMiddleware, rate_limiter=rate_limiter)
+    app.add_middleware(RequestContextMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # anonymous API, no cookies or auth
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "If-None-Match", "X-Request-Id"],
+        expose_headers=["Content-Disposition", "X-Request-Id", "ETag"],
+        allow_credentials=False,
+        max_age=300,
+    )
 
     # Exception handlers
     register_exception_handlers(app)
@@ -115,17 +114,9 @@ def create_app(settings=None) -> FastAPI:
     return app
 
 
-# Lazy initialization: the app is created on first access
-_app: FastAPI | None = None
-
-
-def get_app() -> FastAPI:
-    """Get or create the FastAPI app."""
-    global _app
-    if _app is None:
-        _app = create_app()
-    return _app
-
-
-# For ASGI servers (uvicorn, Vercel, etc.) - use the factory function
-app = get_app()
+def __getattr__(name: str) -> FastAPI:
+    """`uvicorn app.main:app` support without building an app at import time."""
+    if name == "app":
+        globals()["app"] = create_app()
+        return globals()["app"]
+    raise AttributeError(name)

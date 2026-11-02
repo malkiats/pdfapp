@@ -5,10 +5,7 @@ from __future__ import annotations
 import time
 from typing import Final
 
-from starlette.datastructures import Headers, MutableHeaders
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
-
-from pdfapp.backend.app.core.errors import problem_response
+from pdfapp.backend.app.core.errors import ApiError, problem_response
 from pdfapp.backend.app.core.logging import get_logger
 from pdfapp.backend.app.core.request_context import (
     REQUEST_ID_HEADER,
@@ -17,6 +14,8 @@ from pdfapp.backend.app.core.request_context import (
     reset_request_id,
     set_request_id,
 )
+from starlette.datastructures import Headers, MutableHeaders
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 log = get_logger("app.access")
 
@@ -146,7 +145,12 @@ class BodySizeLimitMiddleware:
             if message["type"] == "http.request":
                 received += len(message.get("body", b""))
                 if received > self.max_bytes:
-                    raise RuntimeError("file_too_large")
+                    raise ApiError(
+                        413,
+                        "file_too_large",
+                        detail="The upload exceeds the maximum size.",
+                        params={"limit_bytes": self.max_bytes},
+                    )
             return message
 
         await self.app(scope, limited_receive, send)

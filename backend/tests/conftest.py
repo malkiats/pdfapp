@@ -8,7 +8,6 @@ from typing import Any
 import httpx
 import pytest
 from fastapi import FastAPI
-
 from pdfapp.backend.app.core.config import (
     LimitsSettings,
     RateLimitSettings,

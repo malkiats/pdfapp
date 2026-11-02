@@ -16,13 +16,13 @@ describe("api client", () => {
     vi.unstubAllGlobals();
   });
 
-  it("calls the configured base URL with credentials included", async () => {
+  it("calls the configured base URL without credentials (CORS wildcard)", async () => {
     const fetchMock = mockFetch();
     const client = createApiClient("http://api.test");
     await client.GET("/api/v1/tools");
     const request = fetchMock.mock.calls[0]![0];
     expect(request.url).toBe("http://api.test/api/v1/tools");
-    expect(request.credentials).toBe("include");
+    expect(request.credentials).toBe("omit");
   });
 
   it("maps error codes to messages", () => {

@@ -63,8 +63,7 @@ export function toolFaq(tool: Tool, fileTool: boolean) {
   if (fileTool) return faq;
   const kept = faq.filter((item) => !FILE_STORAGE_QUESTION.test(item.question));
   const url = tool.input_kinds.includes("url");
-  // Phase 1 only supports file and url input kinds; text input is Phase 2+
-  const subject = url ? "the addresses and pages" : "unknown input";
+  const subject = url ? "the addresses and pages" : "the text";
   return [
     ...kept,
     {
@@ -116,7 +115,7 @@ export function ToolPage({ tool }: { tool: Tool }) {
               toolSlug={tool.slug}
               title={tool.title}
               status={tool.status}
-              inputKinds={tool.input_kinds as ("file" | "url")[]}
+              inputKinds={tool.input_kinds as ("file" | "url" | "text")[]}
               accepts={tool.accepts}
               minInputs={tool.min_inputs}
               maxInputs={Math.min(tool.max_inputs, plan.limits.maxFilesPerJob)}

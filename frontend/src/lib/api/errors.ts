@@ -20,7 +20,11 @@ const MESSAGES: Record<string, string> = {
   processing_failed: "We could not process this file.",
   processing_timeout: "Processing took too long. Try a smaller file or fewer pages.",
   internal_error: "Something went wrong on our side.",
-  not_found: "Not found.",
+  not_found: "This tool is not available yet.",
+  wrong_password: "The password is not correct.",
+  result_too_large: "The result is too large to download. Try fewer pages or a lower resolution.",
+  ai_unavailable: "The AI service is not available right now. Please try again later.",
+  network_error: "Could not reach the server. Check your connection; if your files are large, try smaller ones.",
 };
 
 const GENERIC = "Something went wrong. Please try again.";

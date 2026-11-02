@@ -27,6 +27,9 @@ TITLES: Final[dict[str, str]] = {
     "url_blocked": "URL not allowed",
     "internal_error": "Internal error",
     "not_found": "Not found",
+    "wrong_password": "Wrong password",
+    "result_too_large": "Result too large",
+    "ai_unavailable": "AI service unavailable",
 }
 
 

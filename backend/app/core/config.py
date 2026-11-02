@@ -7,7 +7,7 @@ Secrets have no default; they come from the environment only.
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,14 +16,15 @@ Environment = Literal["local", "dev", "prod", "test"]
 
 
 class _Group(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="ignore", frozen=True)
 
 
 class LimitsSettings(_Group):
     """Request limits served by GET /api/v1/tools as UI hints; enforced server-side."""
 
     max_request_bytes: int = Field(
-        default=26214400,  # 25 MB
+        # Vercel Functions reject request bodies above 4.5 MB before the app runs.
+        default=4_500_000,
         ge=1024,
         description="Maximum request body size in bytes.",
     )
@@ -54,7 +55,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="APP_",
         env_nested_delimiter="__",
-        extra="forbid",
+        # Ignore unknown APP_* variables (e.g. ones set by the hosting platform or
+        # older deployments) instead of crashing the whole app at startup.
+        extra="ignore",
     )
 
     environment: Environment = Field(
@@ -65,6 +68,10 @@ class Settings(BaseSettings):
         default=None,
         description="Groq API key for AI features. Optional in Phase 1 (coming-soon tools only).",
     )
+    groq_model: str = Field(
+        default="llama-3.3-70b-versatile",
+        description="Groq chat model used by the AI tools.",
+    )
     limits: LimitsSettings = Field(default_factory=LimitsSettings)
     rate_limit: RateLimitSettings = Field(default_factory=RateLimitSettings)
 
@@ -74,13 +81,6 @@ class Settings(BaseSettings):
         if v not in ("local", "dev", "prod", "test"):
             raise ValueError(f"Invalid environment: {v}")
         return v
-
-    @classmethod
-    def model_validate(cls, obj: Any, **kwargs: Any) -> Settings:  # type: ignore[override]
-        """Override to handle both dict and Settings objects."""
-        if isinstance(obj, Settings):
-            return obj
-        return super().model_validate(obj, **kwargs)
 
 
 @lru_cache(maxsize=1)

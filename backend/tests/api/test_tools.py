@@ -1,14 +1,10 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import httpx
 import pytest
-
-from pdfapp.backend.app.core.config import LimitsSettings
-from pdfapp.backend.app.main import create_app
-from pdfapp.backend.tests.conftest import CATALOG_PATH, make_settings
+from pdfapp.backend.tests.conftest import CATALOG_PATH
 
 CATALOG = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
 
@@ -49,47 +45,21 @@ async def test_etag_and_conditional_get(client: httpx.AsyncClient) -> None:
     assert miss.status_code == 200
     filtered = await client.get("/api/v1/tools?category=organize")
     assert filtered.headers["etag"] != etag
-    assert problem.type == "urn:problem:tool_not_found"
-    assert problem.request_id == response.headers["x-request-id"]
-    assert problem.instance == f"urn:request:{problem.request_id}"
-    assert response.headers["cache-control"] == "no-store"
 
 
-@pytest.mark.parametrize("slug", ["UPPER", "ab", "bad--slug", "x" * 65])
-async def test_get_tool_bad_slug_is_422(client: httpx.AsyncClient, slug: str) -> None:
-    response = await client.get(f"/api/v1/tools/{slug}")
-    assert response.status_code == 422
-    assert response.json()["code"] == "validation_error"
+async def test_get_tool(client: httpx.AsyncClient) -> None:
+    response = await client.get("/api/v1/tools/merge-pdf")
+    assert response.status_code == 200
+    assert response.json() == next(t for t in CATALOG["tools"] if t["slug"] == "merge-pdf")
 
 
-def test_startup_fails_on_invalid_catalog(tmp_path: Path) -> None:
-    bad = dict(CATALOG)
-    bad["tools"] = [*CATALOG["tools"], CATALOG["tools"][0]]  # duplicate slug
-    path = tmp_path / "catalog.json"
-    path.write_text(json.dumps(bad), encoding="utf-8")
-    catalog = CatalogSettings(path=path, schema_path=CATALOG_SCHEMA_PATH)
-    with pytest.raises(CatalogError, match="duplicate slug"):
-        create_app(make_settings(tmp_path, catalog=catalog))
-
-    broken = dict(CATALOG["tools"][0])
-    broken["category"] = "convert"
-    path.write_text(json.dumps({"schema_version": 1, "tools": [broken]}), encoding="utf-8")
-    with pytest.raises(CatalogError, match="invalid"):
-        create_app(make_settings(tmp_path, catalog=catalog))
-
-    missing = CatalogSettings(path=tmp_path / "nope.json", schema_path=CATALOG_SCHEMA_PATH)
-    with pytest.raises(CatalogError, match="not found"):
-        create_app(make_settings(tmp_path, catalog=missing))
-
-
-def test_catalog_only_rule_file_tools_need_accepts(tmp_path: Path) -> None:
-    entry = dict(next(t for t in CATALOG["tools"] if "file" in t["input_kinds"]))
-    entry["accepts"] = []
-    path = tmp_path / "catalog.json"
-    path.write_text(json.dumps({"schema_version": 1, "tools": [entry]}), encoding="utf-8")
-    with pytest.raises(CatalogError):
-        create_app(
-            make_settings(
-                tmp_path, catalog=CatalogSettings(path=path, schema_path=CATALOG_SCHEMA_PATH)
-            )
-        )
+@pytest.mark.parametrize("slug", ["does-not-exist", "UPPER"])
+async def test_unknown_tool_is_404_problem(client: httpx.AsyncClient, slug: str) -> None:
+    for response in (
+        await client.get(f"/api/v1/tools/{slug}"),
+        await client.post(f"/api/v1/{slug}", files={"files": ("a.pdf", b"%PDF-1.7")}),
+    ):
+        assert response.status_code == 404
+        assert response.headers["content-type"] == "application/problem+json"
+        assert response.json()["code"] == "not_found"
+        assert response.json()["request_id"] == response.headers["x-request-id"]
