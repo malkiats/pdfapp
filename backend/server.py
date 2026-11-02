@@ -47,7 +47,14 @@ try:
 except Exception as exc:
     # Keep the function invocable even if application startup fails. This
     # exposes only the exception type/message, not stack traces or secrets.
+    import traceback  # noqa: F401
     from fastapi import FastAPI  # noqa: E402
+
+    # Log the full traceback for debugging
+    tb = traceback.format_exc()
+    error_msg = f"{type(exc).__name__}: {str(exc)}"
+    print(f"ERROR: Failed to create app: {error_msg}", flush=True)
+    print(tb, flush=True)
 
     fallback = FastAPI(title="Document Tools API - startup error", docs_url=None)
 
