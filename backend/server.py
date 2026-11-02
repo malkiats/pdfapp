@@ -13,9 +13,11 @@ sys.path.insert(0, str(_HERE))
 # Vercel Functions can only write under /tmp; the catalog is copied here by scripts/vercel_build.py.
 os.environ.setdefault("APP_STORAGE__ROOT", "/tmp/doctools/workspaces")  # noqa: S108
 os.environ.setdefault("APP_STORAGE__WORK_DIR", "/tmp/doctools/work")  # noqa: S108
-os.environ.setdefault("APP_CATALOG__PATH", str(_HERE / "shared" / "tool-catalog.json"))
+# Shared directory is at repo root, not in backend/
+_REPO_ROOT = _HERE.parent
+os.environ.setdefault("APP_CATALOG__PATH", str(_REPO_ROOT / "shared" / "tool-catalog.json"))
 os.environ.setdefault(
-    "APP_CATALOG__SCHEMA_PATH", str(_HERE / "shared" / "tool-catalog.schema.json")
+    "APP_CATALOG__SCHEMA_PATH", str(_REPO_ROOT / "shared" / "tool-catalog.schema.json")
 )
 # Vercel's edge replaces X-Forwarded-For with the real client IP.
 os.environ.setdefault("APP_RATE_LIMIT__TRUSTED_PROXY_HOPS", "1")
