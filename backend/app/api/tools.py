@@ -35,7 +35,7 @@ ALLOWED_MIMES = {
     "organize-pdf": {"application/pdf"},
     "rotate-pdf": {"application/pdf"},
     "compress-pdf": {"application/pdf"},
-    "image-to-pdf": {"image/png", "image/jpeg", "image/jpg"},
+    "image-to-pdf": {"image/png", "image/jpeg", "image/jpg", "image/webp"},
     "pdf-to-images": {"application/pdf"},
     "extract-text": {"application/pdf"},
 }

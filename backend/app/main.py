@@ -127,48 +127,5 @@ def get_app() -> FastAPI:
     return _app
 
 
-# For ASGI servers (uvicorn, Vercel, etc.)
-app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
-
-
-# Initialize at import time for Vercel
-@app.on_event("startup")
-def startup():
-    """Load settings and configure on startup."""
-    settings = get_settings()
-    configure_logging()
-    _load_catalog()
-    log.info("app_ready", environment=settings.environment)
-
-
-# Include routers
-app.include_router(health.router, tags=["health"])
-app.include_router(tools.router, tags=["catalog", "tools"])
-
-# Middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "If-None-Match", "X-Request-Id"],
-    allow_credentials=False,
-    max_age=300,
-)
-app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(RequestContextMiddleware)
-
-settings = get_settings()
-app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.limits.max_request_bytes)
-
-if settings.rate_limit.enabled:
-    rate_limiter = InMemoryRateLimiter(
-        requests_per_minute=settings.rate_limit.per_ip_per_minute
-    )
-    app.add_middleware(RateLimitMiddleware, rate_limiter=rate_limiter)
-
-register_exception_handlers(app)
-
-# Store state
-app.state.settings = settings
-app.state.catalog_data = _load_catalog()
-app.state.get_catalog_etag = _get_catalog_etag
+# For ASGI servers (uvicorn, Vercel, etc.) - use the factory function
+app = get_app()

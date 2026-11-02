@@ -5,16 +5,14 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
 
-import fakeredis
 import httpx
 import pytest
 from fastapi import FastAPI
 
 from pdfapp.backend.app.core.config import (
-    LoggingSettings,
+    LimitsSettings,
     RateLimitSettings,
     Settings,
-    StorageSettings,
 )
 from pdfapp.backend.app.main import create_app
 
@@ -34,10 +32,9 @@ def _clean_app_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def make_settings(tmp_path: Path, **overrides: Any) -> Settings:
     values: dict[str, Any] = {
-        "env": "test",
-        "storage": StorageSettings(root=tmp_path / "ws-root", work_dir=tmp_path / "work"),
-        "logging": LoggingSettings(level="INFO", json_output=True),
-        "rate_limit": RateLimitSettings(requests_per_window=1000, window_seconds=60),
+        "environment": "test",
+        "limits": LimitsSettings(),
+        "rate_limit": RateLimitSettings(enabled=False),
     }
     values.update(overrides)
     return Settings(**values)
@@ -49,13 +46,8 @@ def settings(tmp_path: Path) -> Settings:
 
 
 @pytest.fixture
-def fake_redis() -> fakeredis.FakeAsyncRedis:
-    return fakeredis.FakeAsyncRedis()
-
-
-@pytest.fixture
-def app(settings: Settings, fake_redis: fakeredis.FakeAsyncRedis) -> FastAPI:
-    return create_app(settings, redis=fake_redis)
+def app(settings: Settings) -> FastAPI:
+    return create_app(settings)
 
 
 @pytest.fixture

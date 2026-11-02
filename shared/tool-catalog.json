@@ -66,7 +66,7 @@
       "max_inputs": 1,
       "options_schema": "OptionsSplit",
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 2,
       "requires_ai_consent": false,
       "seo": {
@@ -191,7 +191,7 @@
       "max_inputs": 1,
       "options_schema": "OptionsOrganize",
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 2,
       "requires_ai_consent": false,
       "seo": {
@@ -212,6 +212,128 @@
           {
             "question": "Are my files stored?",
             "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "image-to-pdf",
+      "category": "convert",
+      "title": "JPG to PDF",
+      "description": "Convert JPG photos and images into a single PDF document.",
+      "icon": "image",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "image/png",
+        "image/jpeg",
+        "image/jpg"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 20,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "available",
+      "phase": 2,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Convert images to PDF online",
+        "description": "Turn JPG, PNG and other images into a PDF document. Private and fast; files deleted after download.",
+        "keywords": [
+          "image to pdf",
+          "jpg to pdf",
+          "png to pdf",
+          "convert image to pdf"
+        ],
+        "faq": [
+          {
+            "question": "Can I convert multiple images at once?",
+            "answer": "Yes. Select up to 20 images and they will be combined into a single PDF."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them. They are deleted automatically after you download the result."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "pdf-to-images",
+      "category": "convert",
+      "title": "PDF to JPG",
+      "description": "Convert each PDF page into a JPG image, downloaded together as a ZIP.",
+      "icon": "image",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "available",
+      "phase": 2,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Convert PDF to images online",
+        "description": "Turn each PDF page into a JPG image. Download all images in one ZIP file. Private and automatic cleanup.",
+        "keywords": [
+          "pdf to jpg",
+          "pdf to image",
+          "convert pdf to images",
+          "pdf to png"
+        ],
+        "faq": [
+          {
+            "question": "What format will my images be?",
+            "answer": "Each PDF page becomes a separate JPG image. If you select high quality, the images will be large."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them. They are deleted automatically after you download the result."
+          }
+        ]
+      }
+    },
+    {
+      "slug": "extract-text",
+      "category": "ai",
+      "title": "PDF to Text",
+      "description": "Extract text from PDF documents.",
+      "icon": "file-text",
+      "input_kinds": [
+        "file"
+      ],
+      "accepts": [
+        "application/pdf"
+      ],
+      "min_inputs": 1,
+      "max_inputs": 1,
+      "options_schema": null,
+      "tier_required": "free",
+      "status": "available",
+      "phase": 2,
+      "requires_ai_consent": false,
+      "seo": {
+        "title": "Extract text from PDF",
+        "description": "Get all text from a PDF in plain text format. Copy, edit or use the text elsewhere.",
+        "keywords": [
+          "extract text from pdf",
+          "pdf to text",
+          "copy pdf text",
+          "pdf text extractor"
+        ],
+        "faq": [
+          {
+            "question": "Will OCR be used for scanned PDFs?",
+            "answer": "This tool extracts existing text. For scanned PDFs, use the OCR tool instead."
+          },
+          {
+            "question": "Are my files stored?",
+            "answer": "Files are kept only while we process them. They are deleted automatically after you download the result."
           }
         ]
       }
@@ -275,7 +397,7 @@
       "max_inputs": 1,
       "options_schema": "OptionsCompress",
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 2,
       "requires_ai_consent": false,
       "seo": {
@@ -904,7 +1026,7 @@
       "max_inputs": 1,
       "options_schema": "OptionsRotate",
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 2,
       "requires_ai_consent": false,
       "seo": {

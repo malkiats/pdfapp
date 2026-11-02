@@ -7,12 +7,12 @@ Secrets have no default; they come from the environment only.
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-Environment = Literal["local", "dev", "prod"]
+Environment = Literal["local", "dev", "prod", "test"]
 
 
 class _Group(BaseModel):
@@ -59,7 +59,7 @@ class Settings(BaseSettings):
 
     environment: Environment = Field(
         default="dev",
-        description="Deployment environment (local, dev, prod).",
+        description="Deployment environment (local, dev, prod, test).",
     )
     groq_api_key: SecretStr | None = Field(
         default=None,
@@ -71,9 +71,16 @@ class Settings(BaseSettings):
     @field_validator("environment")
     @classmethod
     def validate_environment(cls, v: str) -> str:
-        if v not in ("local", "dev", "prod"):
+        if v not in ("local", "dev", "prod", "test"):
             raise ValueError(f"Invalid environment: {v}")
         return v
+
+    @classmethod
+    def model_validate(cls, obj: Any, **kwargs: Any) -> Settings:  # type: ignore[override]
+        """Override to handle both dict and Settings objects."""
+        if isinstance(obj, Settings):
+            return obj
+        return super().model_validate(obj, **kwargs)
 
 
 @lru_cache(maxsize=1)
