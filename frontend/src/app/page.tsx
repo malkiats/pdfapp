@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, GitBranch, Lock, Zap } from "lucide-react";
 import { homeFaq } from "@/components/home/faq";
 import { Hero } from "@/components/home/Hero";
 import { PrivacyLimits, PrivacySteps } from "@/components/home/PrivacySteps";
 import { Section } from "@/components/home/Section";
 import { WhyChooseUs } from "@/components/home/WhyChooseUs";
-import { PricingCards } from "@/components/pricing/PricingCards";
 import { CategoryCard } from "@/components/tools/CategoryCard";
 import { ToolGrid } from "@/components/tools/ToolGrid";
 import { Faq } from "@/components/ui/Faq";
@@ -78,16 +77,33 @@ export default function HomePage() {
       </Section>
 
       <Section
-        id="pricing"
-        title="Simple pricing"
-        description="Start free. Upgrade only if you need bigger files."
-        action={
-          <Link href="/pricing" className={linkClass}>
-            Compare plans <ArrowRight aria-hidden="true" className="size-4" />
-          </Link>
-        }
+        id="open-source"
+        title="100% Free & Open Source"
+        description="No payments, no accounts, no limits. Ever."
+        muted
       >
-        <PricingCards />
+        <div className="grid gap-6 md:grid-cols-3">
+          <div className="rounded-lg border border-border bg-surface p-6">
+            <Zap className="mb-3 size-8 text-accent" />
+            <h3 className="font-semibold mb-2">Completely Free</h3>
+            <p className="text-sm text-muted">All tools are free with no hidden charges, no subscriptions, and no account required.</p>
+          </div>
+          <div className="rounded-lg border border-border bg-surface p-6">
+            <GitBranch className="mb-3 size-8 text-accent" />
+            <h3 className="font-semibold mb-2">Open Source</h3>
+            <p className="text-sm text-muted">Full source code available. Self-host it, contribute improvements, or use our hosted version.</p>
+          </div>
+          <div className="rounded-lg border border-border bg-surface p-6">
+            <Lock className="mb-3 size-8 text-accent" />
+            <h3 className="font-semibold mb-2">Privacy First</h3>
+            <p className="text-sm text-muted">Files are deleted automatically after processing. No tracking, no ads, no data sales.</p>
+          </div>
+        </div>
+        <div className="mt-8 text-center">
+          <Link href="/pricing" className="inline-flex min-h-11 items-center rounded-lg bg-accent px-6 font-medium text-accent-foreground">
+            Learn More
+          </Link>
+        </div>
       </Section>
 
       <Section id="faq" title="Frequently asked questions" muted>
