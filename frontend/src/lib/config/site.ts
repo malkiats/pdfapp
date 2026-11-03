@@ -6,11 +6,11 @@ import { categoryHref, getCategoryById } from "@/lib/config/categories";
 
 export const siteConfig = {
   name: "Pagewell",
-  tagline: "Your files. Your privacy. Our tools.",
+  tagline: "Free Online PDF & Document Tools",
   /** The one default <title> (home page and fallback). */
-  defaultTitle: "Pagewell: private online PDF and document tools",
+  defaultTitle: "Pagewell: Free Online PDF & Document Tools - No Account Required",
   description:
-    "Privacy-first online tools to merge, split, compress, convert, OCR and summarise documents. Files are deleted automatically after processing.",
+    "Fast, simple document tools for everyone. Merge, split, compress, convert, OCR and summarize documents online. No account required. Your files are automatically deleted after processing.",
   /** AI provider named in consent and privacy copy (docs/privacy.md §3). */
   aiProviderName: "Groq",
   /**
@@ -33,7 +33,7 @@ function categoryLink(id: "ai" | "compare"): string {
 export const mainNav: readonly { href: string; label: string }[] = [
   { href: categoryLink("ai"), label: "AI Tools" },
   { href: "/tools/compare-webpages", label: "Compare Webpages" },
-  { href: "/pricing", label: "Pricing" },
+  { href: "/about", label: "About" },
 ];
 
 export const companyLinks = [

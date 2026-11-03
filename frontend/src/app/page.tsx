@@ -17,7 +17,7 @@ import { getActiveCategories, getPopularTools, getToolSummaries, getToolsInCateg
 export const metadata = pageMetadata({
   title: siteConfig.defaultTitle,
   absoluteTitle: true,
-  description: `Merge, split, compress, convert and OCR documents online. ${retentionSentence}`,
+  description: siteConfig.description,
   path: "/",
 });
 
