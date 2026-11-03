@@ -35,18 +35,18 @@ export default function AboutPage() {
               <Link href="/security">how we handle files</Link> for the details, including the limits.
             </li>
             <li>
-              <strong>Useful for free.</strong> The free plan needs no account. Paid plans exist for people who need
-              bigger files, not to unlock basic features.
+              <strong>100% free and open source.</strong> No account required, no ads, no hidden charges, ever. Full
+              source code available on GitHub for anyone to review, self-host, or contribute to.
             </li>
             <li>
               <strong>No ads, no tracking.</strong> We don&apos;t run analytics or advertising trackers on this site.
+              No data collection, no selling user information.
             </li>
           </ul>
-          <h2>Where we are</h2>
+          <h2>All tools available now</h2>
           <p>
-            We are launching in stages. The most common PDF tools come first, followed by Office conversion and OCR,
-            then accounts and paid plans, and finally AI and web comparison tools. Every tool page already explains how
-            the tool will work, and uploads open as each tool launches.
+            We have launched all 46 tools with full support for PDF operations, document conversions, OCR, AI-powered
+            tools, and more. No staged rollout, no locked features. Everything is ready to use right now, completely free.
           </p>
           <h2>Get in touch</h2>
           <p>

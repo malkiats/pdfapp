@@ -15,7 +15,7 @@ const channels = [
   {
     icon: LifeBuoy,
     title: "Support and feedback",
-    text: "Problems with a tool, questions about plans, or a feature you would like to see.",
+    text: "Problems with a tool, feature requests, or general questions. Open source contributions welcome!",
     email: siteConfig.contactEmail,
   },
   {

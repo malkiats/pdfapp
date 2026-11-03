@@ -17,18 +17,20 @@ export function Section({
   action?: ReactNode;
 }) {
   return (
-    <section aria-labelledby={`${id}-title`} className={muted ? "bg-surface" : undefined}>
-      <Container className="py-14 sm:py-16">
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-          <div className="max-w-2xl">
-            <h2 id={`${id}-title`} className="text-2xl font-bold tracking-tight sm:text-3xl">
+    <section aria-labelledby={`${id}-title`} className={muted ? "bg-surface/50 backdrop-blur-sm" : "bg-gradient-to-b from-transparent to-accent-soft/5"}>
+      <Container className="py-16 sm:py-20">
+        <div className="mb-12 flex flex-wrap items-end justify-between gap-6">
+          <div className="max-w-3xl">
+            <h2 id={`${id}-title`} className="text-3xl font-bold tracking-tight sm:text-4xl bg-gradient-to-r from-fg to-fg/80 bg-clip-text text-transparent">
               {title}
             </h2>
-            {description ? <p className="mt-2 text-muted">{description}</p> : null}
+            {description ? <p className="mt-3 text-lg text-muted leading-relaxed">{description}</p> : null}
           </div>
-          {action}
+          {action ? <div className="shrink-0">{action}</div> : null}
         </div>
-        {children}
+        <div className="mt-8">
+          {children}
+        </div>
       </Container>
     </section>
   );

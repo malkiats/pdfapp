@@ -1,4 +1,4 @@
-import { BadgeDollarSign, Gauge, Lock, MonitorSmartphone, ShieldCheck, UserX } from "lucide-react";
+import { Gauge, GitBranch, Lock, MonitorSmartphone, ShieldCheck, UserX } from "lucide-react";
 import { retentionSentence } from "@/lib/config/retention";
 
 const reasons = [
@@ -10,7 +10,7 @@ const reasons = [
   {
     icon: UserX,
     title: "No account needed",
-    text: "Use the free plan without signing up or handing over an email address.",
+    text: "Use without signing up or providing an email address. Complete anonymity.",
   },
   {
     icon: Lock,
@@ -28,9 +28,9 @@ const reasons = [
     text: "Use it from any modern browser on your phone, tablet or computer. Nothing to install.",
   },
   {
-    icon: BadgeDollarSign,
-    title: "Fair, simple pricing",
-    text: "A generous free plan, and low-cost plans when you need bigger files.",
+    icon: GitBranch,
+    title: "100% open source",
+    text: "Full source code available. Self-host it or contribute improvements on GitHub.",
   },
 ] as const;
 

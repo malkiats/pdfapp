@@ -6,13 +6,12 @@ import { Faq } from "@/components/ui/Faq";
 import { JsonLd } from "@/components/ui/JsonLd";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { categoryHref, getCategoryById } from "@/lib/config/categories";
-import { getPlan } from "@/lib/config/pricing";
 import { retentionSentence } from "@/lib/config/retention";
 import { siteConfig } from "@/lib/config/site";
 import { acceptLabel, MB } from "@/lib/format";
 import { breadcrumbJsonLd, faqJsonLd, toolJsonLd } from "@/lib/seo";
 import { getToolsInCategory, hasFileInput, toolHref } from "@/services/catalog";
-import type { Tool, Tier } from "@/types/catalog";
+import type { Tool } from "@/types/catalog";
 import { ToolGrid } from "./ToolGrid";
 import { ToolIcon } from "./ToolIcon";
 import { ToolWorkspace } from "./ToolWorkspace";
@@ -87,8 +86,10 @@ export function ToolPage({ tool }: { tool: Tool }) {
     .slice(0, 4);
   const fileTool = hasFileInput(tool);
   const faq = toolFaq(tool, fileTool);
-  const tierRequired = ((tool as Record<string, unknown>).tier_required as string | undefined) || "free";
-  const plan = getPlan(tierRequired as Tier);
+  // Default limits for all tools (no tiers)
+  const maxFilesPerJob = 20;
+  const maxFileMb = 500;
+  const MB = 1024 * 1024;
   const jsonLd = [toolJsonLd(tool, path), breadcrumbJsonLd(crumbs), ...(faq.length > 0 ? [faqJsonLd(faq)] : [])];
   const steps = howItWorks(tool);
 
@@ -118,19 +119,10 @@ export function ToolPage({ tool }: { tool: Tool }) {
               inputKinds={tool.input_kinds as ("file" | "url" | "text")[]}
               accepts={tool.accepts}
               minInputs={tool.min_inputs}
-              maxInputs={Math.min(tool.max_inputs, plan.limits.maxFilesPerJob)}
-              maxFileBytes={plan.limits.maxFileMb * MB}
+              maxInputs={Math.min(tool.max_inputs, maxFilesPerJob)}
+              maxFileBytes={maxFileMb * MB}
               requiresAiConsent={(tool as Record<string, unknown>).requires_ai_consent as boolean | undefined}
             />
-            {fileTool ? (
-              <p className="mt-3 text-xs text-muted">
-                Limits shown are for the {plan.name} plan.{" "}
-                <Link href="/pricing" className="inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-0">
-                  See plan limits
-                </Link>
-                .
-              </p>
-            ) : null}
           </div>
         </Container>
       </div>

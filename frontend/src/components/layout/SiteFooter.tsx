@@ -45,13 +45,13 @@ export function SiteFooter() {
           </nav>
           <nav aria-labelledby="footer-company">
             <p id="footer-company" className="text-sm font-semibold">
-              Company
+              Open Source
             </p>
             <ul className="mt-3 space-y-0 text-sm md:space-y-2">
               <li>
-                <Link href="/pricing" className="inline-flex min-h-11 items-center text-muted hover:text-fg md:min-h-0">
-                  Pricing
-                </Link>
+                <a href="https://github.com" className="inline-flex min-h-11 items-center text-muted hover:text-fg md:min-h-0">
+                  GitHub
+                </a>
               </li>
               {companyLinks.map((link) => (
                 <li key={link.href}>
