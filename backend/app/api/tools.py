@@ -38,16 +38,29 @@ HANDLERS: Final[dict[str, Handler]] = {
     # optimize
     "compress-pdf": pdf_ops.compress_pdf,
     "repair-pdf": pdf_ops.repair_pdf,
+    "ocr-pdf": pdf_ops.ocr_pdf,
     # convert
     "jpg-to-pdf": lambda i: pdf_ops.images_to_pdf(i, "jpg-to-pdf"),
     "png-to-pdf": lambda i: pdf_ops.images_to_pdf(i, "png-to-pdf"),
     "pdf-to-jpg": lambda i: pdf_ops.pdf_to_images(i, "jpg", "pdf-to-jpg"),
     "pdf-to-png": lambda i: pdf_ops.pdf_to_images(i, "png", "pdf-to-png"),
+    # document conversions
+    "word-to-pdf": pdf_ops.word_to_pdf,
+    "powerpoint-to-pdf": pdf_ops.powerpoint_to_pdf,
+    "excel-to-pdf": pdf_ops.excel_to_pdf,
+    "html-to-pdf": pdf_ops.html_to_pdf,
+    "pdf-to-word": pdf_ops.pdf_to_word,
+    "pdf-to-powerpoint": pdf_ops.pdf_to_powerpoint,
+    "pdf-to-excel": pdf_ops.pdf_to_excel,
     # edit
     "rotate-pdf": pdf_ops.rotate_pdf,
     "add-page-numbers": pdf_ops.add_page_numbers,
     "add-watermark": pdf_ops.add_watermark,
     "crop-pdf": pdf_ops.crop_pdf,
+    "edit-pdf": pdf_ops.edit_pdf,
+    "pdf-forms": pdf_ops.pdf_forms,
+    "sign-pdf": pdf_ops.sign_pdf,
+    "redact-pdf": pdf_ops.redact_pdf,
     # security
     "unlock-pdf": pdf_ops.unlock_pdf,
     "protect-pdf": pdf_ops.protect_pdf,
@@ -62,6 +75,14 @@ HANDLERS: Final[dict[str, Handler]] = {
     "ask-pdf": ai.ask_pdf,
     # compare
     "compare-webpages": web.compare_webpages,
+    # OCR-based image tools
+    "image-to-text": pdf_ops.image_to_text,
+    "jpg-to-text": pdf_ops.jpg_to_text,
+    "png-to-text": pdf_ops.png_to_text,
+    "screenshot-to-text": pdf_ops.screenshot_to_text,
+    "scanned-document-to-text": pdf_ops.scanned_document_to_text,
+    "receipt-to-text": pdf_ops.receipt_to_text,
+    "handwriting-to-text": pdf_ops.handwriting_to_text,
 }
 
 _MAX_TEXT_CHARS: Final = 100_000

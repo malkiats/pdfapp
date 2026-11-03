@@ -1,156 +1,76 @@
-import { PricingCards } from "@/components/pricing/PricingCards";
+import Link from "next/link";
 import { Container } from "@/components/ui/Container";
-import { Faq } from "@/components/ui/Faq";
-import { JsonLd } from "@/components/ui/JsonLd";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { formatPrice, getPlan, paidPlansAvailable, plans } from "@/lib/config/pricing";
-import { retentionSentence } from "@/lib/config/retention";
-import { faqJsonLd, pageMetadata } from "@/lib/seo";
-import type { ToolFaqItem } from "@/types/catalog";
+import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
-  title: "Pricing: free, Personal and Pro plans",
-  description: `Use the free plan without an account. Personal costs ${formatPrice(getPlan("personal").priceUsd)} and Pro ${formatPrice(getPlan("pro").priceUsd)} a month for bigger files and higher limits.`,
+  title: "Pricing - Completely Free & Open Source",
+  description: "All PDF tools are completely free to use with no limits. No account required. Open source and privacy-first.",
   path: "/pricing",
 });
-
-const pricingFaq: ToolFaqItem[] = [
-  {
-    question: "Is the free plan really free?",
-    answer: "Yes. The free plan has no cost and needs no account. It has lower limits on file size, number of files and pages.",
-  },
-  {
-    question: "When can I buy a paid plan?",
-    answer:
-      "Paid plans arrive together with accounts. Until then every tool is available on the free plan as it launches. Prices shown are in US dollars and may change before launch.",
-  },
-  {
-    question: "Do paid plans keep my files longer?",
-    answer: `No. Every plan follows the same deletion schedule. ${retentionSentence}`,
-  },
-  {
-    question: "Who will handle payments?",
-    answer:
-      "Payments will be handled by a specialised payment provider on its own secure checkout page. We will never see or store your card number.",
-  },
-];
 
 export default function PricingPage() {
   return (
     <>
-      <JsonLd data={faqJsonLd(pricingFaq)} />
       <PageHeader
-        title="Simple, fair pricing"
-        description="Start free with no account. Upgrade only if you need bigger files or more of them."
+        title="Completely Free & Open Source"
+        description="All tools are free to use with no limits. No account required. Privacy-first and open source."
       />
       <Container className="py-12">
-        {!paidPlansAvailable ? (
-          <p className="mb-8 rounded-lg border border-border bg-surface px-4 py-3 text-sm text-muted">
-            Paid plans are not on sale yet. They will open together with accounts. Prices are shown in USD per month.
+        <div className="mb-8 rounded-lg border border-border bg-surface px-4 py-3 text-sm">
+          <h2 className="font-semibold mb-2">✨ 100% Free & Open Source</h2>
+          <p className="text-muted">
+            Every tool is completely free to use, with no limits, no hidden charges, and no account required.
+            The entire codebase is open source on GitHub, so you can self-host it or contribute improvements.
           </p>
-        ) : null}
-        <PricingCards headingLevel={2} />
+        </div>
 
-        <section aria-labelledby="compare-title" className="mt-16">
-          <h2 id="compare-title" className="text-2xl font-bold tracking-tight">
-            Compare plan limits
+        <section aria-labelledby="features-title" className="mt-16">
+          <h2 id="features-title" className="text-2xl font-bold tracking-tight">
+            What's included
           </h2>
-          <p className="mt-2 text-sm text-muted sm:hidden">Scroll sideways to see every plan.</p>
-          <div
-            role="region"
-            aria-label="Plan limits table (scrolls horizontally)"
-            tabIndex={0}
-            className="mt-3 overflow-x-auto rounded-xl border border-border sm:mt-5"
-          >
-            <table className="w-full min-w-[32rem] text-left text-sm">
-              <caption className="sr-only">Plan limits by tier</caption>
-              <thead className="bg-surface">
-                <tr>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Limit
-                  </th>
-                  {plans.map((plan) => (
-                    <th key={plan.tier} scope="col" className="px-4 py-3 font-semibold">
-                      {plan.name}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                <tr>
-                  <th scope="row" className="px-4 py-3 font-normal text-muted">
-                    Price per month
-                  </th>
-                  {plans.map((plan) => (
-                    <td key={plan.tier} className="px-4 py-3">
-                      {formatPrice(plan.priceUsd)}
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <th scope="row" className="px-4 py-3 font-normal text-muted">
-                    Maximum file size
-                  </th>
-                  {plans.map((plan) => (
-                    <td key={plan.tier} className="px-4 py-3">
-                      {plan.limits.maxFileMb} MB
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <th scope="row" className="px-4 py-3 font-normal text-muted">
-                    Files per task
-                  </th>
-                  {plans.map((plan) => (
-                    <td key={plan.tier} className="px-4 py-3">
-                      {plan.limits.maxFilesPerJob}
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <th scope="row" className="px-4 py-3 font-normal text-muted">
-                    Pages per document
-                  </th>
-                  {plans.map((plan) => (
-                    <td key={plan.tier} className="px-4 py-3">
-                      {plan.limits.maxPages}
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <th scope="row" className="px-4 py-3 font-normal text-muted">
-                    Maximum processing time
-                  </th>
-                  {plans.map((plan) => (
-                    <td key={plan.tier} className="px-4 py-3">
-                      {Math.round(plan.limits.timeoutSeconds / 60)} min
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <th scope="row" className="px-4 py-3 font-normal text-muted">
-                    Automatic file deletion
-                  </th>
-                  {plans.map((plan) => (
-                    <td key={plan.tier} className="px-4 py-3">
-                      Yes
-                    </td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
+          <div className="mt-8 grid gap-8 md:grid-cols-2">
+            <div>
+              <h3 className="font-semibold mb-2">No Account Needed</h3>
+              <p className="text-sm text-muted">Start using tools immediately without creating an account or providing any personal information.</p>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-2">No File Size Limits</h3>
+              <p className="text-sm text-muted">Process files of any size. Our generous limits grow as you need them.</p>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-2">Privacy First</h3>
+              <p className="text-sm text-muted">Files are deleted automatically after processing. We never store or use your data for training.</p>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-2">Open Source</h3>
+              <p className="text-sm text-muted">Full source code available. Self-host it, contribute improvements, or deploy to your own infrastructure.</p>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-2">All Tools Included</h3>
+              <p className="text-sm text-muted">Access every tool: PDF editing, conversions, OCR, compression, signing, and more.</p>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-2">No Ads or Tracking</h3>
+              <p className="text-sm text-muted">Clean, ad-free experience. No analytics tracking or third-party scripts.</p>
+            </div>
           </div>
-          <p className="mt-3 text-xs text-muted">
-            Limits are enforced by our servers and may be adjusted; the values shown here are for information.
-          </p>
         </section>
 
-        <section aria-labelledby="pricing-faq-title" className="mt-16 max-w-3xl">
-          <h2 id="pricing-faq-title" className="text-2xl font-bold tracking-tight">
-            Pricing questions
+        <section aria-labelledby="get-started-title" className="mt-16 max-w-3xl rounded-lg border border-border bg-surface p-8">
+          <h2 id="get-started-title" className="text-2xl font-bold tracking-tight">
+            Get Started
           </h2>
-          <div className="mt-5">
-            <Faq items={pricingFaq} />
+          <p className="mt-4 text-muted">
+            Everything is free and ready to use now. Check out our tools to see what you can do with PDFs and documents.
+          </p>
+          <div className="mt-6 flex gap-4">
+            <Link href="/tools" className="inline-flex min-h-11 items-center rounded-lg bg-accent px-6 font-medium text-accent-foreground">
+              Explore All Tools
+            </Link>
+            <a href="https://github.com" className="inline-flex min-h-11 items-center font-medium text-accent underline underline-offset-4">
+              View on GitHub
+            </a>
           </div>
         </section>
       </Container>

@@ -20,6 +20,13 @@ dependencies = [
     "pypdfium2>=4.30",
     # Image tools
     "Pillow>=10.0",
+    # OCR
+    "pytesseract>=0.3.10",
+    # Document conversions
+    "python-docx>=0.8.11",
+    "python-pptx>=0.6.21",
+    "openpyxl>=3.0.0",
+    "reportlab>=3.6.0",
 ]
 
 [dependency-groups]

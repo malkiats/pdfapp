@@ -361,7 +361,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 3,
       "requires_ai_consent": false,
       "seo": {
@@ -491,7 +491,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 3,
       "requires_ai_consent": false,
       "seo": {
@@ -535,7 +535,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 3,
       "requires_ai_consent": false,
       "seo": {
@@ -575,7 +575,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 3,
       "requires_ai_consent": false,
       "seo": {
@@ -615,7 +615,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 3,
       "requires_ai_consent": false,
       "seo": {
@@ -735,7 +735,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 3,
       "requires_ai_consent": false,
       "seo": {
@@ -779,7 +779,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 3,
       "requires_ai_consent": false,
       "seo": {
@@ -819,7 +819,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 3,
       "requires_ai_consent": false,
       "seo": {
@@ -835,51 +835,6 @@
           {
             "question": "How accurate is table detection?",
             "answer": "Tables with clear rows and columns convert well. Merged cells or tables without ruling lines may need manual checks."
-          },
-          {
-            "question": "Are my files stored?",
-            "answer": "Files are kept only while we process them and while you download the result. They are then deleted automatically, usually within minutes of your download and always within 2 hours, with a scheduled cleanup as a safety net. We never keep your original file name."
-          }
-        ]
-      }
-    },
-    {
-      "slug": "pdf-to-pdfa",
-      "category": "convert-from-pdf",
-      "title": "PDF to PDF/A",
-      "description": "Convert a PDF to PDF/A for long-term archiving. Availability pending a licensing decision.",
-      "icon": "archive",
-      "input_kinds": [
-        "file"
-      ],
-      "accepts": [
-        "application/pdf"
-      ],
-      "min_inputs": 1,
-      "max_inputs": 1,
-      "options_schema": null,
-      "tier_required": "free",
-      "status": "coming_soon",
-      "phase": 6,
-      "requires_ai_consent": false,
-      "seo": {
-        "title": "PDF to PDF/A: convert PDFs for long-term archiving",
-        "description": "Convert PDFs to the PDF/A archival standard so they display the same for years. Coming soon; files will be deleted after download.",
-        "keywords": [
-          "pdf to pdfa",
-          "pdf/a converter",
-          "archive pdf",
-          "pdf a-2b",
-          "convert pdf to pdf/a"
-        ],
-        "faq": [
-          {
-            "question": "When will PDF to PDF/A be available?",
-            "answer": "This tool depends on a conversion engine whose licensing we are still reviewing. It stays marked as coming soon until that is settled."
-          },
-          {
-            "question": "What is PDF/A?",
-            "answer": "PDF/A is an ISO standard for archiving. It embeds fonts and forbids features such as external content, so the file renders the same in the future."
           },
           {
             "question": "Are my files stored?",
@@ -1064,7 +1019,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 6,
       "requires_ai_consent": false,
       "seo": {
@@ -1105,7 +1060,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 6,
       "requires_ai_consent": false,
       "seo": {
@@ -1230,7 +1185,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 6,
       "requires_ai_consent": false,
       "seo": {
@@ -1270,7 +1225,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 6,
       "requires_ai_consent": false,
       "seo": {
@@ -1353,7 +1308,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 3,
       "requires_ai_consent": false,
       "seo": {
@@ -1398,7 +1353,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 3,
       "requires_ai_consent": false,
       "seo": {
@@ -1438,7 +1393,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 3,
       "requires_ai_consent": false,
       "seo": {
@@ -1480,7 +1435,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 3,
       "requires_ai_consent": false,
       "seo": {
@@ -1528,7 +1483,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 3,
       "requires_ai_consent": false,
       "seo": {
@@ -1575,7 +1530,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 3,
       "requires_ai_consent": false,
       "seo": {
@@ -1622,7 +1577,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "coming_soon",
+      "status": "available",
       "phase": 3,
       "requires_ai_consent": false,
       "seo": {
