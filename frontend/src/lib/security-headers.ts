@@ -8,17 +8,36 @@
  *   There are no third-party scripts and no user-generated HTML, which limits
  *   the XSS surface. Revisit with nonces (proxy) once dynamic, signed-in pages
  *   ship (see README "Security headers").
- * - connect-src allows only this origin and the API origin from
- *   NEXT_PUBLIC_API_BASE_URL (browser uploads/downloads go there directly).
+ * - connect-src allows only this origin, the API origin from
+ *   NEXT_PUBLIC_API_BASE_URL (browser uploads/downloads go there directly) and
+ *   the large-file storage origins from NEXT_PUBLIC_UPLOAD_ORIGINS (presigned PUTs).
  */
 
 export interface SecurityHeaderOptions {
   apiBaseUrl: string;
   isDev: boolean;
+  /** Storage origins that receive presigned PUTs (large-file flow). */
+  uploadOrigins?: readonly string[];
 }
 
-export function buildCsp({ apiBaseUrl, isDev }: SecurityHeaderOptions): string {
-  const apiOrigin = new URL(apiBaseUrl).origin;
+/** Refuses anything but a plain http(s) origin, so config can never inject CSP syntax or wildcards. */
+export function assertPlainOrigin(source: string): string {
+  if (/[\s;,*'"]/.test(source)) throw new Error("CSP source must be a plain origin");
+  let url: URL;
+  try {
+    url = new URL(source);
+  } catch {
+    throw new Error("CSP source must be a plain origin");
+  }
+  if ((url.protocol !== "https:" && url.protocol !== "http:") || url.origin !== source) {
+    throw new Error("CSP source must be a plain origin");
+  }
+  return source;
+}
+
+export function buildCsp({ apiBaseUrl, isDev, uploadOrigins = [] }: SecurityHeaderOptions): string {
+  const apiOrigin = assertPlainOrigin(new URL(apiBaseUrl).origin);
+  uploadOrigins.forEach(assertPlainOrigin);
   const apiIsHttps = apiOrigin.startsWith("https://");
   const directives: Record<string, string[]> = {
     "default-src": ["'self'"],
@@ -26,7 +45,7 @@ export function buildCsp({ apiBaseUrl, isDev }: SecurityHeaderOptions): string {
     "style-src": ["'self'", "'unsafe-inline'"],
     "img-src": ["'self'", "data:", "blob:"],
     "font-src": ["'self'"],
-    "connect-src": ["'self'", apiOrigin, ...(isDev ? ["ws:", "wss:"] : [])],
+    "connect-src": ["'self'", apiOrigin, ...uploadOrigins, ...(isDev ? ["ws:", "wss:"] : [])],
     "media-src": ["'self'"],
     "worker-src": ["'self'", "blob:"],
     "manifest-src": ["'self'"],

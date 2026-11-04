@@ -23,9 +23,9 @@ CATALOG_SCHEMA_PATH = REPO_ROOT / "shared" / "tool-catalog.schema.json"
 
 @pytest.fixture(autouse=True)
 def _clean_app_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Tests never inherit APP_* settings from the developer's shell."""
+    """Tests never inherit APP_* or R2_* settings from the developer's shell."""
     for name in list(os.environ):
-        if name.startswith("APP_"):
+        if name.startswith(("APP_", "R2_")):
             monkeypatch.delenv(name, raising=False)
 
 

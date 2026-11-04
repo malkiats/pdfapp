@@ -1,7 +1,6 @@
 import { ShieldCheck } from "lucide-react";
 import { ToolSearch } from "@/components/tools/ToolSearch";
 import { Container } from "@/components/ui/Container";
-import { retentionSentence } from "@/lib/config/retention";
 import type { ToolSummary } from "@/types/catalog";
 
 export function Hero({ tools }: { tools: ToolSummary[] }) {

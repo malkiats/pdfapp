@@ -22,6 +22,8 @@ class ToolInput:
     text: str = ""
     urls: list[str] = field(default_factory=list)
     max_pages: int = 100
+    # Handlers that build large outputs incrementally stop once they pass this.
+    max_output_bytes: int = 4_400_000
     groq_api_key: str | None = None
     groq_model: str = "llama-3.3-70b-versatile"
 
@@ -39,6 +41,14 @@ def validation_error(pointer: str, message: str) -> ApiError:
         "validation_error",
         detail=message,
         errors=[{"pointer": pointer, "code": "invalid", "message": message}],
+    )
+
+
+def result_too_large() -> ApiError:
+    return ApiError(
+        413,
+        "result_too_large",
+        detail="The result is too large to download. Try fewer pages or lower quality.",
     )
 
 

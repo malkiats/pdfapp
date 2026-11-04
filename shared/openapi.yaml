@@ -54,6 +54,8 @@ tags:
     description: Synchronous PDF and image tools. Multipart request, file response.
   - name: web
     description: Synchronous web page tools. JSON request, JSON response.
+  - name: uploads
+    description: Large-file flow. Presigned direct-to-storage upload, then run a tool by upload id and download the result from a short-lived URL.
 security: []
 paths:
   /health:
@@ -235,6 +237,10 @@ paths:
                     limits:
                       max_request_bytes: 26214400
                       max_pages: 100
+                      large_files_enabled: true
+                      max_large_file_bytes: 524288000
+                      max_large_total_bytes: 1073741824
+                      inline_max_bytes: 4194304
         "304":
           description: Catalog unchanged since the supplied ETag. No body.
           headers:
@@ -928,7 +934,352 @@ paths:
           $ref: "#/components/responses/BadGateway"
         "504":
           $ref: "#/components/responses/GatewayTimeout"
+  /api/v1/uploads:
+    post:
+      operationId: createUpload
+      tags: [uploads]
+      summary: Start a large-file upload
+      description: |
+        Large-file flow, step 1 of 3. Additive to the inline multipart flow: use it when a
+        file set exceeds `limits.inline_max_bytes` and `limits.large_files_enabled` is true.
+        Declares the files; the server returns one presigned `PUT` target per file. The
+        client never chooses object keys. Then: `PUT` each file to its `put_url` sending
+        exactly the returned `headers` (step 2), and call `runUploadedTool` (step 3).
+        Per-file size is capped by `limits.max_large_file_bytes`, the sum by
+        `limits.max_large_total_bytes`; either overrun is `413 file_too_large`.
+        `503 large_files_unavailable` means storage is not configured on this deployment:
+        fall back to the inline flow.
+      x-phase: 2
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUploadRequest"
+            examples:
+              merge_two:
+                summary: Two large PDFs for merge-pdf
+                value:
+                  tool: merge-pdf
+                  files:
+                    - size: 41943040
+                      content_type: application/pdf
+                    - size: 73400320
+                      content_type: application/pdf
+      responses:
+        "201":
+          description: Upload created. Valid until `expires_at`.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+            RateLimit-Limit:
+              $ref: "#/components/headers/RateLimitLimit"
+            RateLimit-Remaining:
+              $ref: "#/components/headers/RateLimitRemaining"
+            RateLimit-Reset:
+              $ref: "#/components/headers/RateLimitReset"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateUploadResponse"
+              examples:
+                merge_two:
+                  summary: Two presigned targets
+                  value:
+                    upload_id: u_Zk3p9Qx1Lm7Rt5Vb2Nc8Hd4Jf6Sg0Wa
+                    expires_at: "2026-11-04T13:00:00Z"
+                    files:
+                      - index: 0
+                        put_url: https://storage.example.com/uploads/opaque-0?signature=REDACTED
+                        headers:
+                          Content-Type: application/pdf
+                          Content-Length: "41943040"
+                      - index: 1
+                        put_url: https://storage.example.com/uploads/opaque-1?signature=REDACTED
+                        headers:
+                          Content-Type: application/pdf
+                          Content-Length: "73400320"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          description: Unknown tool slug.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                unknown_tool:
+                  summary: No such tool
+                  value:
+                    type: urn:problem:not_found
+                    title: Not found
+                    status: 404
+                    detail: The requested resource does not exist.
+                    instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                    code: not_found
+                    request_id: req_7Qk2mX9aVb4Lp1Zs
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/ServerError"
+        "503":
+          description: Large-file storage is not configured on this deployment. Use the inline flow.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                unavailable:
+                  summary: Storage not configured
+                  value:
+                    type: urn:problem:large_files_unavailable
+                    title: Large files unavailable
+                    status: 503
+                    detail: Large file uploads are not available right now.
+                    instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                    code: large_files_unavailable
+                    request_id: req_7Qk2mX9aVb4Lp1Zs
+  /api/v1/uploads/{upload_id}/run/{slug}:
+    post:
+      operationId: runUploadedTool
+      tags: [uploads]
+      summary: Run a tool on uploaded files
+      description: |
+        Large-file flow, step 3 of 3. Runs tool `slug` over the files of `upload_id`, in
+        `files[].index` order, after the client has finished every `PUT`. The server
+        verifies each object exists with the declared size, else `409 upload_incomplete`.
+        Returns a short-lived `download_url` for the result instead of the file body.
+        `options`, `ai_consent` and `text` mean the same as the multipart parts of the
+        inline `POST /api/v1/{slug}` operation for that tool.
+      x-phase: 2
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/UploadId"
+        - name: slug
+          in: path
+          required: true
+          description: Tool slug from the catalog.
+          schema:
+            type: string
+            pattern: "^[a-z0-9-]{1,64}$"
+          example: merge-pdf
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RunUploadedToolRequest"
+            examples:
+              merge:
+                summary: Merge with options
+                value:
+                  options:
+                    keep_bookmarks: true
+              empty:
+                summary: No options
+                value: {}
+      responses:
+        "200":
+          description: Processed. Fetch the result from `download_url` before `expires_at`.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+            RateLimit-Limit:
+              $ref: "#/components/headers/RateLimitLimit"
+            RateLimit-Remaining:
+              $ref: "#/components/headers/RateLimitRemaining"
+            RateLimit-Reset:
+              $ref: "#/components/headers/RateLimitReset"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResult"
+              examples:
+                merged:
+                  summary: Merge result
+                  value:
+                    download_url: https://storage.example.com/results/opaque-out?signature=REDACTED
+                    filename: merge-pdf-result.pdf
+                    media_type: application/pdf
+                    size: 115343360
+                    expires_at: "2026-11-04T12:30:00Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          description: Unknown or expired upload, or unknown tool.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                unknown_upload:
+                  summary: Upload expired or unknown
+                  value:
+                    type: urn:problem:not_found
+                    title: Not found
+                    status: 404
+                    detail: The requested resource does not exist.
+                    instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                    code: not_found
+                    request_id: req_7Qk2mX9aVb4Lp1Zs
+        "409":
+          description: An uploaded object is missing or its size differs from the declaration. PUT again, then retry.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                incomplete:
+                  summary: Object missing or size mismatch
+                  value:
+                    type: urn:problem:upload_incomplete
+                    title: Upload incomplete
+                    status: 409
+                    detail: One or more files have not been fully uploaded.
+                    instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                    code: upload_incomplete
+                    request_id: req_7Qk2mX9aVb4Lp1Zs
+                    errors:
+                      - pointer: /files/1
+                        code: upload_incomplete
+                        message: File not uploaded or size mismatch.
+        "415":
+          description: An uploaded file is not a type the tool accepts (sniffed by magic bytes). May also be returned as 400 `unsupported_type`; branch on `code`.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                unsupported:
+                  summary: Sniffed kind not accepted
+                  value:
+                    type: urn:problem:unsupported_type
+                    title: Unsupported file type
+                    status: 415
+                    detail: One of the files is not a type this tool accepts.
+                    instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                    code: unsupported_type
+                    request_id: req_7Qk2mX9aVb4Lp1Zs
+        "422":
+          description: The tool could not process the input (corrupt, encrypted, over page cap).
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                processing_failed:
+                  summary: Unprocessable input
+                  value:
+                    type: urn:problem:processing_failed
+                    title: Processing failed
+                    status: 422
+                    detail: The file could not be processed.
+                    instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                    code: processing_failed
+                    request_id: req_7Qk2mX9aVb4Lp1Zs
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/ServerError"
+        "503":
+          description: Large-file storage is not configured or temporarily unavailable.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                unavailable:
+                  summary: Storage unavailable
+                  value:
+                    type: urn:problem:large_files_unavailable
+                    title: Large files unavailable
+                    status: 503
+                    detail: Large file uploads are not available right now.
+                    instance: urn:request:req_7Qk2mX9aVb4Lp1Zs
+                    code: large_files_unavailable
+                    request_id: req_7Qk2mX9aVb4Lp1Zs
+        "504":
+          $ref: "#/components/responses/GatewayTimeout"
+  /api/v1/uploads/{upload_id}:
+    delete:
+      operationId: deleteUpload
+      tags: [uploads]
+      summary: Delete an upload
+      description: |
+        Deletes the inputs and any outputs of the upload. Idempotent: always `204` for a
+        well-formed id, whether or not it exists or has expired. Clients should call it
+        when done; the server also expires uploads on its own.
+      x-phase: 2
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/UploadId"
+      responses:
+        "204":
+          description: Deleted, or nothing to delete. No body.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControlNoStore"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/ServerError"
 components:
+  parameters:
+    UploadId:
+      name: upload_id
+      in: path
+      required: true
+      description: Opaque upload identifier from `createUpload`.
+      schema:
+        type: string
+        pattern: "^[A-Za-z0-9_-]{32,128}$"
+      example: u_Zk3p9Qx1Lm7Rt5Vb2Nc8Hd4Jf6Sg0Wa
   headers:
     RequestId:
       description: |
@@ -1240,7 +1591,7 @@ components:
         the matching HTTP class. HTTP status per code: 400 bad_request, validation_error,
         too_many_files, too_many_pages, unsupported_type, type_mismatch, invalid_file,
         file_encrypted, url_blocked; 404 not_found; 413 file_too_large; 429 rate_limited;
-        500 processing_failed, internal_error; 502 upstream_fetch_failed; 504
+        409 upload_incomplete; 415 unsupported_type (large-file run); 422 processing_failed (large-file run); 500 processing_failed, internal_error; 503 large_files_unavailable; 502 upstream_fetch_failed; 504
         processing_timeout.
       type: string
       enum:
@@ -1260,6 +1611,8 @@ components:
         - processing_timeout
         - internal_error
         - not_found
+        - large_files_unavailable
+        - upload_incomplete
       examples: [file_too_large]
     FieldError:
       description: One field-level problem inside a `Problem.errors` list.
@@ -1424,7 +1777,7 @@ components:
       description: Global request limits. Values come from server settings, never hard-coded by clients. Use them for UI hints and pre-flight checks only, the server enforces.
       type: object
       additionalProperties: false
-      required: [max_request_bytes, max_pages]
+      required: [max_request_bytes, max_pages, large_files_enabled, max_large_file_bytes, max_large_total_bytes, inline_max_bytes]
       properties:
         max_request_bytes:
           description: Maximum size of the whole request body in bytes (all files plus options). Recommended default 26214400 (25 MB), subject to the hosting platform payload limit.
@@ -1436,9 +1789,197 @@ components:
           type: integer
           minimum: 1
           examples: [100]
+        large_files_enabled:
+          description: True when the large-file flow (`/api/v1/uploads`) is available on this deployment.
+          type: boolean
+          examples: [true]
+        max_large_file_bytes:
+          description: Maximum size of one file in the large-file flow, in bytes.
+          type: integer
+          minimum: 1
+          examples: [524288000]
+        max_large_total_bytes:
+          description: Maximum total size of all files of one upload, in bytes.
+          type: integer
+          minimum: 1
+          examples: [1073741824]
+        inline_max_bytes:
+          description: Largest total size the inline multipart flow accepts. Above this, use the large-file flow.
+          type: integer
+          minimum: 1
+          examples: [4194304]
       examples:
         - max_request_bytes: 26214400
           max_pages: 100
+          large_files_enabled: true
+          max_large_file_bytes: 524288000
+          max_large_total_bytes: 1073741824
+          inline_max_bytes: 4194304
+    CreateUploadFile:
+      description: One file to be uploaded. Only size and declared type; the real type is sniffed at run time.
+      type: object
+      additionalProperties: false
+      required: [size, content_type]
+      properties:
+        size:
+          description: Exact size in bytes. The `PUT` must send exactly this many bytes.
+          type: integer
+          minimum: 1
+          examples: [41943040]
+        content_type:
+          description: Declared media type. Must be one the tool accepts (`Tool.accepts`).
+          type: string
+          enum: [application/pdf, image/jpeg, image/png, image/webp, image/tiff]
+          examples: [application/pdf]
+      examples:
+        - size: 41943040
+          content_type: application/pdf
+    CreateUploadRequest:
+      description: Declares the files of one large-file run.
+      type: object
+      additionalProperties: false
+      required: [tool, files]
+      properties:
+        tool:
+          description: Slug of the tool the files are for.
+          type: string
+          pattern: "^[a-z0-9-]{1,64}$"
+          examples: [merge-pdf]
+        files:
+          description: Files in processing order, 1 to 20.
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/CreateUploadFile"
+      examples:
+        - tool: merge-pdf
+          files:
+            - size: 41943040
+              content_type: application/pdf
+    UploadTarget:
+      description: Where and how to upload one file.
+      type: object
+      additionalProperties: false
+      required: [index, put_url, headers]
+      properties:
+        index:
+          description: Zero-based position in the request `files` array.
+          type: integer
+          minimum: 0
+          maximum: 19
+          examples: [0]
+        put_url:
+          description: Presigned URL. `PUT` the raw file bytes here. Treat as a secret, do not log.
+          type: string
+          format: uri
+          examples: ["https://storage.example.com/uploads/opaque-0?signature=REDACTED"]
+        headers:
+          description: Headers the client MUST send on the `PUT`, including `Content-Type` and `Content-Length`. Anything else breaks the signature.
+          type: object
+          additionalProperties:
+            type: string
+          examples:
+            - Content-Type: application/pdf
+              Content-Length: "41943040"
+      examples:
+        - index: 0
+          put_url: https://storage.example.com/uploads/opaque-0?signature=REDACTED
+          headers:
+            Content-Type: application/pdf
+            Content-Length: "41943040"
+    CreateUploadResponse:
+      description: Upload handle and one presigned target per declared file.
+      type: object
+      additionalProperties: false
+      required: [upload_id, expires_at, files]
+      properties:
+        upload_id:
+          description: Opaque url-safe identifier, at least 32 characters. Server-generated.
+          type: string
+          pattern: "^[A-Za-z0-9_-]{32,128}$"
+          examples: [u_Zk3p9Qx1Lm7Rt5Vb2Nc8Hd4Jf6Sg0Wa]
+        expires_at:
+          description: After this instant the presigned URLs and the upload are invalid.
+          type: string
+          format: date-time
+          examples: ["2026-11-04T13:00:00Z"]
+        files:
+          description: One target per request file, same order.
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/UploadTarget"
+      examples:
+        - upload_id: u_Zk3p9Qx1Lm7Rt5Vb2Nc8Hd4Jf6Sg0Wa
+          expires_at: "2026-11-04T13:00:00Z"
+          files:
+            - index: 0
+              put_url: https://storage.example.com/uploads/opaque-0?signature=REDACTED
+              headers:
+                Content-Type: application/pdf
+                Content-Length: "41943040"
+    RunUploadedToolRequest:
+      description: Options for running a tool over uploaded files. All members optional.
+      type: object
+      additionalProperties: false
+      properties:
+        options:
+          description: The tool options object (shape named by `Tool.options_schema`). Unknown keys are rejected with `validation_error`.
+          type: object
+          additionalProperties: true
+          examples:
+            - keep_bookmarks: true
+        ai_consent:
+          description: Explicit consent to AI processing, for tools that need it.
+          type: boolean
+          examples: [false]
+        text:
+          description: Free text input, for tools that take it.
+          type: string
+          maxLength: 100000
+          examples: [Add this text]
+      examples:
+        - options:
+            keep_bookmarks: true
+    UploadResult:
+      description: A processed result held in storage for a short time.
+      type: object
+      additionalProperties: false
+      required: [download_url, filename, media_type, size, expires_at]
+      properties:
+        download_url:
+          description: Short-lived presigned `GET` URL. Treat as a secret, do not log.
+          type: string
+          format: uri
+          examples: ["https://storage.example.com/results/opaque-out?signature=REDACTED"]
+        filename:
+          description: Suggested filename, same pattern as the inline flow.
+          type: string
+          maxLength: 255
+          examples: [merge-pdf-result.pdf]
+        media_type:
+          description: Media type of the result.
+          type: string
+          maxLength: 100
+          examples: [application/pdf]
+        size:
+          description: Result size in bytes.
+          type: integer
+          minimum: 0
+          examples: [115343360]
+        expires_at:
+          description: After this instant `download_url` stops working.
+          type: string
+          format: date-time
+          examples: ["2026-11-04T12:30:00Z"]
+      examples:
+        - download_url: https://storage.example.com/results/opaque-out?signature=REDACTED
+          filename: merge-pdf-result.pdf
+          media_type: application/pdf
+          size: 115343360
+          expires_at: "2026-11-04T12:30:00Z"
     ToolList:
       description: The catalog plus the global limits.
       type: object
@@ -1475,6 +2016,10 @@ components:
           limits:
             max_request_bytes: 26214400
             max_pages: 100
+            large_files_enabled: true
+            max_large_file_bytes: 524288000
+            max_large_total_bytes: 1073741824
+            inline_max_bytes: 4194304
     ToolCategory:
       description: Catalog grouping. Adding a category is a minor, additive change; clients must render unknown
         categories gracefully.

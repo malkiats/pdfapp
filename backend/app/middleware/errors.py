@@ -7,10 +7,9 @@ from typing import Final
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import Response
-from starlette.exceptions import HTTPException as StarletteHTTPException
-
 from pdfapp.backend.app.core.errors import ApiError, problem_response
 from pdfapp.backend.app.core.logging import get_logger
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 log = get_logger(__name__)
 
@@ -58,15 +57,18 @@ async def handle_validation_error(request: Request, exc: RequestValidationError)
 
     field_errors = []
     for err in errors[:_MAX_ERRORS]:
-        field_errors.append({
-            "pointer": _pointer(err.get("loc", ())),
-            "code": str(err.get("type", "invalid"))[:64],
-            "message": str(err.get("msg", "Invalid value."))[:300],
-        })
+        field_errors.append(
+            {
+                "pointer": _pointer(err.get("loc", ())),
+                "code": str(err.get("type", "invalid"))[:64],
+                "message": str(err.get("msg", "Invalid value."))[:300],
+            }
+        )
 
+    # The contract maps validation_error to 400 (ErrorCode table), not FastAPI's 422.
     return problem_response(
         "validation_error",
-        422,
+        400,
         detail="One or more fields are invalid.",
         errors=field_errors,
     )

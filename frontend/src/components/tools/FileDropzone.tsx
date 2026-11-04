@@ -17,6 +17,8 @@ export interface FileDropzoneProps {
   /** Explains why the zone is disabled, e.g. "This tool is coming soon". */
   disabledReason?: string;
   label?: string;
+  /** True while the server limits are still loading: the hint says so and sizes are re-checked when they arrive. */
+  checkingLimits?: boolean;
   /** Called with the full current selection after every change. */
   onFilesChange?: (files: File[]) => void;
 }
@@ -83,6 +85,7 @@ export const FileDropzone = forwardRef<FileDropzoneRef, FileDropzoneProps>(funct
     disabled = false,
     disabledReason,
     label = "Choose files",
+    checkingLimits = false,
     onFilesChange,
   },
   ref,
@@ -95,9 +98,16 @@ export const FileDropzone = forwardRef<FileDropzoneRef, FileDropzoneProps>(funct
   const errorId = useId();
   const reasonId = useId();
 
+  // Re-checked on every render, so a lower cap (e.g. server limits arriving) rejects files added earlier.
+  const valid = files.filter((f) => f.size <= maxFileBytes);
+  const overCap: RejectedFile[] = files
+    .filter((f) => f.size > maxFileBytes)
+    .map((f) => ({ name: f.name, reason: `larger than ${formatBytes(maxFileBytes)}` }));
+  const shownRejected = [...rejected, ...overCap];
+
   // Expose getFiles via ref
   useImperativeHandle(ref, () => ({
-    getFiles: () => files,
+    getFiles: () => valid,
   }));
 
   const acceptAttr = accept.flatMap((mime) => [mime, ...(MIME_EXTENSIONS[mime] ?? [])]).join(",");
@@ -110,13 +120,13 @@ export const FileDropzone = forwardRef<FileDropzoneRef, FileDropzoneProps>(funct
 
   const addFiles = (incoming: File[]) => {
     if (disabled || incoming.length === 0) return;
-    const result = validateFiles(incoming, files, { accept, maxFiles, maxFileBytes });
+    const result = validateFiles(incoming, valid, { accept, maxFiles, maxFileBytes });
     setRejected(result.rejected);
-    if (result.accepted.length > 0) update([...files, ...result.accepted]);
+    if (result.accepted.length > 0) update([...valid, ...result.accepted]);
   };
 
   const removeAt = (index: number) => {
-    update(files.filter((_, i) => i !== index));
+    update(valid.filter((_, i) => i !== index));
     setRejected([]);
   };
 
@@ -136,7 +146,7 @@ export const FileDropzone = forwardRef<FileDropzoneRef, FileDropzoneProps>(funct
     addFiles(Array.from(event.dataTransfer.files));
   };
 
-  const describedBy = [hintId, rejected.length > 0 ? errorId : null, disabled && disabledReason ? reasonId : null]
+  const describedBy = [hintId, shownRejected.length > 0 ? errorId : null, disabled && disabledReason ? reasonId : null]
     .filter(Boolean)
     .join(" ");
 
@@ -162,7 +172,8 @@ export const FileDropzone = forwardRef<FileDropzoneRef, FileDropzoneProps>(funct
         <Upload aria-hidden="true" className={`size-10 ${disabled ? "text-muted" : "text-accent"}`} />
         <p className="mt-4 text-lg font-semibold">{disabled ? "Uploads are not open yet" : "Drop files here"}</p>
         <p id={hintId} className="mt-1 text-sm text-muted">
-          {accept.length > 0 ? `${acceptLabel(accept)}` : "Any file"} · up to {formatBytes(maxFileBytes)} each ·{" "}
+          {accept.length > 0 ? `${acceptLabel(accept)}` : "Any file"} ·{" "}
+          {checkingLimits ? "checking size limits…" : `up to ${formatBytes(maxFileBytes)} each`} ·{" "}
           {minFiles > 1 ? `${minFiles} to ${maxFiles} files` : maxFiles === 1 ? "1 file" : `up to ${maxFiles} files`}
         </p>
         {disabled && disabledReason ? (
@@ -197,13 +208,13 @@ export const FileDropzone = forwardRef<FileDropzoneRef, FileDropzoneProps>(funct
         <p className="mt-4 text-xs text-muted">File names stay in your browser and are never stored.</p>
       </div>
 
-      {rejected.length > 0 ? (
+      {shownRejected.length > 0 ? (
         <div id={errorId} role="alert" className="mt-3 rounded-lg bg-danger-soft px-4 py-3 text-sm text-danger">
           <p className="font-medium">
-            {rejected.length === 1 ? "1 file was not added:" : `${rejected.length} files were not added:`}
+            {shownRejected.length === 1 ? "1 file was not added:" : `${shownRejected.length} files were not added:`}
           </p>
           <ul className="mt-1 list-disc pl-5">
-            {rejected.map((r, i) => (
+            {shownRejected.map((r, i) => (
               <li key={`${r.name}-${i}`}>
                 <span className="break-all">{r.name}</span>: {r.reason}
               </li>
@@ -212,13 +223,13 @@ export const FileDropzone = forwardRef<FileDropzoneRef, FileDropzoneProps>(funct
         </div>
       ) : null}
 
-      {files.length > 0 ? (
+      {valid.length > 0 ? (
         <div className="mt-4">
           <h3 className="text-sm font-semibold">
-            Selected files ({files.length}/{maxFiles})
+            Selected files ({valid.length}/{maxFiles})
           </h3>
           <ul aria-label="Selected files" className="mt-2 divide-y divide-border rounded-xl border border-border">
-            {files.map((file, index) => (
+            {valid.map((file, index) => (
               <li key={`${file.name}-${file.size}-${index}`} className="flex items-center gap-3 px-4 py-2.5">
                 <FileText aria-hidden="true" className="size-5 shrink-0 text-muted" />
                 <span className="min-w-0 flex-1 truncate text-sm" title={file.name}>
@@ -236,9 +247,9 @@ export const FileDropzone = forwardRef<FileDropzoneRef, FileDropzoneProps>(funct
               </li>
             ))}
           </ul>
-          {files.length < minFiles ? (
+          {valid.length < minFiles ? (
             <p className="mt-2 text-sm text-muted">
-              Add at least {minFiles - files.length} more {minFiles - files.length === 1 ? "file" : "files"} to continue.
+              Add at least {minFiles - valid.length} more {minFiles - valid.length === 1 ? "file" : "files"} to continue.
             </p>
           ) : null}
         </div>

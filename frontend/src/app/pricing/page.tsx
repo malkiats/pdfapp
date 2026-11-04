@@ -27,7 +27,7 @@ export default function PricingPage() {
 
         <section aria-labelledby="features-title" className="mt-16">
           <h2 id="features-title" className="text-2xl font-bold tracking-tight">
-            What's included
+            What&apos;s included
           </h2>
           <div className="mt-8 grid gap-8 md:grid-cols-2">
             <div>

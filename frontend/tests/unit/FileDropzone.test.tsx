@@ -89,6 +89,19 @@ describe("FileDropzone", () => {
     expect(screen.queryByRole("list", { name: "Selected files" })).not.toBeInTheDocument();
   });
 
+  it("shows the per-file cap it is given, including large-file caps", () => {
+    setup({ maxFileBytes: 100 * MB, minFiles: 2, maxFiles: 20 });
+    expect(screen.getByText("PDF · up to 100 MB each · 2 to 20 files")).toBeInTheDocument();
+  });
+
+  it("rejects files above a large-file cap", () => {
+    setup({ maxFileBytes: 100 * MB });
+    const huge = new File(["x"], "huge.pdf", { type: "application/pdf" });
+    Object.defineProperty(huge, "size", { value: 100 * MB + 1 });
+    fireEvent.drop(screen.getByTestId("dropzone"), { dataTransfer: { files: [huge] } });
+    expect(screen.getByRole("alert")).toHaveTextContent("huge.pdf: larger than 100 MB");
+  });
+
   it("shows the minimum-files hint until enough files are added", async () => {
     const user = userEvent.setup();
     const { input } = setup({ minFiles: 2 });

@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { NextConfig } from "next";
-import { apiBaseUrl, siteUrl } from "./src/lib/env";
+import { apiBaseUrl, siteUrl, uploadOrigins } from "./src/lib/env";
 import { securityHeaders } from "./src/lib/security-headers";
 
 /**
@@ -38,7 +38,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/:path*",
-        headers: securityHeaders({ apiBaseUrl, isDev }),
+        headers: securityHeaders({ apiBaseUrl, isDev, uploadOrigins }),
       },
     ];
   },

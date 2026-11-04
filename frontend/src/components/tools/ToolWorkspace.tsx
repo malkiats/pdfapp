@@ -1,14 +1,23 @@
 "use client";
 
 import { Bot, Copy, Link2, RotateCcw, Type } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import { useId, useRef, useState } from "react";
+import { useApiLimits, useToolRunner } from "@/hooks/useToolRunner";
+import { effectiveCaps, INLINE_FALLBACK_BYTES } from "@/lib/api/uploads";
 import { siteConfig } from "@/lib/config/site";
-import { apiBaseUrl } from "@/lib/env";
 import { formatBytes } from "@/lib/format";
 import type { ToolStatus } from "@/types/catalog";
 import { FileDropzone, type FileDropzoneRef } from "./FileDropzone";
-import { ProcessingStatus, type ProcessingState } from "./ProcessingStatus";
+import { PAGE_WORKSPACE_TOOLS } from "./pageWorkspaces";
+import { ProcessingStatus } from "./ProcessingStatus";
 import { defaultOptions, missingRequired, ToolForm } from "./ToolForm";
+
+/** Client-only: pdf.js needs the DOM, a worker and canvas. */
+const RemovePagesWorkspace = dynamic(
+  () => import("./remove-pages/RemovePagesWorkspace").then((m) => m.RemovePagesWorkspace),
+  { ssr: false, loading: () => <p className="rounded-2xl border border-border bg-surface p-5 text-sm text-muted">Opening your PDF…</p> },
+);
 
 export interface ToolWorkspaceProps {
   toolSlug: string;
@@ -23,27 +32,16 @@ export interface ToolWorkspaceProps {
   requiresAiConsent?: boolean;
 }
 
-/** The hosting platform rejects request bodies above 4.5 MB; keep headroom for form overhead. */
-export const MAX_UPLOAD_BYTES = 4_400_000;
+/** Inline-flow cap used until the server limits are known. */
+export const MAX_UPLOAD_BYTES = INLINE_FALLBACK_BYTES;
 
 const fieldClass =
   "mt-1 h-11 w-full rounded-lg border border-border-strong bg-bg px-3 disabled:cursor-not-allowed disabled:bg-surface-strong disabled:text-muted";
 
-interface Result {
-  url: string;
-  filename: string;
-  /** Present for text results, which are also shown on the page. */
-  text?: string;
-}
-
-function filenameFrom(disposition: string | null, fallback: string): string {
-  const match = disposition?.match(/filename="([^"]+)"/);
-  return match?.[1] ?? fallback;
-}
-
 /**
  * The interactive area of a tool page. Collects input (files, URLs, text),
- * options and consent, submits to POST /api/v1/{slug}, and shows the result or error.
+ * options and consent, submits inline (POST /api/v1/{slug}) or, for large files,
+ * through the upload flow, and shows the result or error.
  */
 export function ToolWorkspace(props: ToolWorkspaceProps) {
   const { toolSlug, title, status, inputKinds, accepts, minInputs, maxInputs, maxFileBytes, requiresAiConsent } =
@@ -55,15 +53,21 @@ export function ToolWorkspace(props: ToolWorkspaceProps) {
   const multipleKinds = inputKinds.length > 1;
   const disabledReason = comingSoon ? `${title} is coming soon. Inputs are disabled until it launches.` : undefined;
 
-  const [state, setState] = useState<ProcessingState>({ phase: "idle" });
+  const { limits, loaded: limitsLoaded } = useApiLimits();
+  const runner = useToolRunner(toolSlug, limits);
+  const { state, result, busy } = runner;
+  const caps = effectiveCaps(limits, accepts);
+  // Until the server limits arrive, accept up to the plan cap; the dropzone re-checks once they do.
+  const perFileCap = limitsLoaded ? Math.min(maxFileBytes, caps.perFile) : maxFileBytes;
+
   const [options, setOptions] = useState<Record<string, unknown>>(() => defaultOptions(toolSlug));
   const [consent, setConsent] = useState(false);
   const [urls, setUrls] = useState({ url1: "", url2: "" });
   const [text, setText] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
-  const [result, setResult] = useState<Result | null>(null);
   const [copied, setCopied] = useState(false);
   const [formKey, setFormKey] = useState(0);
+  const [pageWorkspaceFile, setPageWorkspaceFile] = useState<File | null>(null);
 
   const fileDropzoneRef = useRef<FileDropzoneRef>(null);
   const urlId = useId();
@@ -71,26 +75,12 @@ export function ToolWorkspace(props: ToolWorkspaceProps) {
   const textId = useId();
   const consentId = useId();
   const urlCount = hasUrl && !hasText && !hasFile ? Math.min(maxInputs, 2) : 1;
-  const busy = state.phase === "processing";
   const locked = comingSoon || busy;
-
-  // Free the object URL of a previous result.
-  useEffect(() => () => {
-    if (result) URL.revokeObjectURL(result.url);
-  }, [result]);
-
-  const download = (r: Result | null = result) => {
-    if (!r) return;
-    const link = document.createElement("a");
-    link.href = r.url;
-    link.download = r.filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  };
+  const pageWorkspace = PAGE_WORKSPACE_TOOLS.has(toolSlug) && !comingSoon && hasFile;
 
   /** Returns an error message, or null when the inputs are complete. */
   const validate = (files: File[]): string | null => {
+    if (files.length > 0 && !limitsLoaded) return "Checking upload limits. Try again in a moment.";
     const urlValues = [urls.url1.trim(), urls.url2.trim()].filter(Boolean);
     const provided = files.length > 0 || urlValues.length > 0 || text.trim() !== "";
     if (!provided) {
@@ -102,8 +92,8 @@ export function ToolWorkspace(props: ToolWorkspaceProps) {
     if (files.length > 0 && files.length < minInputs) return `Add at least ${minInputs} files.`;
     if (!multipleKinds && hasUrl && urlValues.length < Math.min(minInputs, urlCount)) return "Enter both page addresses.";
     const total = files.reduce((sum, f) => sum + f.size, 0);
-    if (total > MAX_UPLOAD_BYTES) {
-      return `Your files add up to ${formatBytes(total)}. The current limit is ${formatBytes(MAX_UPLOAD_BYTES)} per request.`;
+    if (total > caps.total) {
+      return `Your files add up to ${formatBytes(total)}. The current limit is ${formatBytes(caps.total)} per request.`;
     }
     const missing = missingRequired(toolSlug, options);
     if (missing.length > 0) return `Fill in: ${missing.join(", ")}.`;
@@ -117,55 +107,18 @@ export function ToolWorkspace(props: ToolWorkspaceProps) {
     setFormError(problem);
     if (problem) return;
 
-    const formData = new FormData();
-    files.forEach((file) => formData.append("files", file));
-    if (urls.url1.trim()) formData.append("url_a", urls.url1.trim());
-    if (urls.url2.trim()) formData.append("url_b", urls.url2.trim());
-    if (text.trim()) formData.append("text", text);
-    formData.append("options", JSON.stringify(options));
-    if (requiresAiConsent) formData.append("ai_consent", String(consent));
-
-    setResult(null);
-    setState({ phase: "processing" });
-
-    let response: Response;
-    try {
-      response = await fetch(`${apiBaseUrl}/api/v1/${toolSlug}`, { method: "POST", body: formData });
-    } catch {
-      // Network failure, or a platform error without CORS headers (e.g. upload too large).
-      setState({ phase: "failed", errorCode: "network_error" });
-      return;
-    }
-
-    const requestId = response.headers.get("x-request-id") ?? undefined;
-    if (!response.ok) {
-      let errorCode: string | null = response.status === 413 ? "file_too_large" : null;
-      try {
-        const problemBody = (await response.json()) as { code?: string };
-        errorCode = problemBody.code ?? errorCode;
-      } catch {
-        // Not a problem+json body (e.g. a platform error page).
-      }
-      setState({ phase: "failed", errorCode, requestId });
-      return;
-    }
-
-    const blob = await response.blob();
-    const contentType = response.headers.get("content-type") ?? "";
-    const filename = filenameFrom(response.headers.get("content-disposition"), `${toolSlug}-result`);
-    const next: Result = { url: URL.createObjectURL(blob), filename };
-    if (contentType.startsWith("text/")) {
-      next.text = await blob.text();
-    } else {
-      download(next);
-    }
-    setResult(next);
-    setState({ phase: "succeeded", filename });
+    await runner.run({
+      files,
+      options,
+      urlA: urls.url1.trim() || undefined,
+      urlB: urls.url2.trim() || undefined,
+      text: text.trim() ? text : undefined,
+      aiConsent: requiresAiConsent ? consent : undefined,
+    });
   };
 
   const handleReset = () => {
-    setState({ phase: "idle" });
-    setResult(null);
+    runner.reset();
     setFormError(null);
     setCopied(false);
   };
@@ -176,8 +129,18 @@ export function ToolWorkspace(props: ToolWorkspaceProps) {
     setText("");
     setConsent(false);
     setOptions(defaultOptions(toolSlug));
+    setPageWorkspaceFile(null);
     setFormKey((k) => k + 1);
   };
+
+  // Open the page workspace only once the file is known to be within the limits.
+  if (pageWorkspace && pageWorkspaceFile && limitsLoaded && pageWorkspaceFile.size <= perFileCap) {
+    return (
+      <section aria-label={`${title} workspace`}>
+        <RemovePagesWorkspace file={pageWorkspaceFile} runner={runner} onChangeFile={handleStartOver} />
+      </section>
+    );
+  }
 
   const copyText = async () => {
     if (!result?.text) return;
@@ -190,7 +153,7 @@ export function ToolWorkspace(props: ToolWorkspaceProps) {
   };
 
   return (
-    <section aria-label={`${title} workspace`} className="space-y-4">
+    <section aria-label={`${title} workspace`} className={pageWorkspace ? "max-w-3xl space-y-4" : "space-y-4"}>
       {/* Exactly one coming-soon notice: inside the dropzone for file tools, here otherwise. */}
       {comingSoon && !hasFile ? (
         <p className="rounded-lg border border-warning/40 bg-warning-soft px-4 py-3 text-sm font-medium text-warning">
@@ -212,9 +175,11 @@ export function ToolWorkspace(props: ToolWorkspaceProps) {
           accept={accepts}
           maxFiles={maxInputs}
           minFiles={minInputs}
-          maxFileBytes={Math.min(maxFileBytes, MAX_UPLOAD_BYTES)}
+          maxFileBytes={perFileCap}
+          checkingLimits={!limitsLoaded}
           disabled={locked}
           disabledReason={disabledReason}
+          onFilesChange={pageWorkspace ? (files) => setPageWorkspaceFile(files[0] ?? null) : undefined}
         />
       ) : null}
 
@@ -279,7 +244,9 @@ export function ToolWorkspace(props: ToolWorkspaceProps) {
         </fieldset>
       ) : null}
 
-      <ToolForm key={`options-${formKey}`} toolSlug={toolSlug} disabled={locked} onOptionsChange={setOptions} />
+      {pageWorkspace ? null : (
+        <ToolForm key={`options-${formKey}`} toolSlug={toolSlug} disabled={locked} onOptionsChange={setOptions} />
+      )}
 
       {requiresAiConsent ? (
         <label
@@ -309,18 +276,26 @@ export function ToolWorkspace(props: ToolWorkspaceProps) {
         </p>
       ) : null}
 
-      {!comingSoon && state.phase !== "succeeded" && state.phase !== "failed" ? (
+      {pageWorkspace ? (
+        <p className="text-sm text-muted">Add a PDF to see its pages. Thumbnails are made in your browser.</p>
+      ) : !comingSoon && state.phase !== "succeeded" && state.phase !== "failed" ? (
         <button
           onClick={handleProcess}
           type="button"
           disabled={busy}
           className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-medium text-accent-fg hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {busy ? "Processing…" : title}
+          {state.phase === "uploading" ? "Uploading…" : busy ? "Processing…" : title}
         </button>
       ) : null}
 
-      <ProcessingStatus state={state} onDownload={result ? () => download() : undefined} onRetry={handleReset} />
+      <ProcessingStatus
+        state={state}
+        onDownload={result ? runner.download : undefined}
+        onRetry={handleReset}
+        onCancel={runner.cancellable ? runner.cancel : undefined}
+        focusOnError
+      />
 
       {result?.text !== undefined ? (
         <div className="rounded-2xl border border-border bg-surface p-4">

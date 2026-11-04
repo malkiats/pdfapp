@@ -3,43 +3,40 @@
 
 from __future__ import annotations
 from enum import IntEnum, StrEnum
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from pydantic import AnyUrl, AwareDatetime, BaseModel, ConfigDict, Field, RootModel
 
 
 class ErrorCode(StrEnum):
     """
-    Stable machine-readable error codes. Used in `Problem.code` and, for a failed
-    job, `JobStatus.error_code`. New codes may be added (additive); clients
-    treat unknown codes as a generic failure of the matching HTTP class.
+    Stable machine-readable error codes (the `code` of every `Problem`). New codes
+    may be added (additive); clients treat an unknown code as a generic failure of
+    the matching HTTP class. HTTP status per code: 400 bad_request, validation_error,
+    too_many_files, too_many_pages, unsupported_type, type_mismatch, invalid_file,
+    file_encrypted, url_blocked; 404 not_found; 413 file_too_large; 429 rate_limited;
+    409 upload_incomplete; 415 unsupported_type (large-file run); 422 processing_failed (large-file run); 500 processing_failed, internal_error; 503 large_files_unavailable; 502 upstream_fetch_failed; 504
+    processing_timeout.
 
     """
 
     bad_request = "bad_request"
-    unauthorized = "unauthorized"
-    forbidden = "forbidden"
     validation_error = "validation_error"
     file_too_large = "file_too_large"
     too_many_files = "too_many_files"
+    too_many_pages = "too_many_pages"
     unsupported_type = "unsupported_type"
     type_mismatch = "type_mismatch"
-    too_many_pages = "too_many_pages"
-    rate_limited = "rate_limited"
-    quota_exceeded = "quota_exceeded"
-    ai_consent_required = "ai_consent_required"
-    ai_provider_unavailable = "ai_provider_unavailable"
-    url_blocked = "url_blocked"
-    tool_not_found = "tool_not_found"
-    tool_unavailable = "tool_unavailable"
-    job_not_found = "job_not_found"
-    job_not_ready = "job_not_ready"
-    job_expired = "job_expired"
-    download_ticket_invalid = "download_ticket_invalid"
     invalid_file = "invalid_file"
+    file_encrypted = "file_encrypted"
+    url_blocked = "url_blocked"
+    rate_limited = "rate_limited"
+    upstream_fetch_failed = "upstream_fetch_failed"
     processing_failed = "processing_failed"
-    job_timeout = "job_timeout"
-    service_unavailable = "service_unavailable"
+    processing_timeout = "processing_timeout"
     internal_error = "internal_error"
+    not_found = "not_found"
+    large_files_unavailable = "large_files_unavailable"
+    upload_incomplete = "upload_incomplete"
 
 
 class FieldError(BaseModel):
@@ -69,7 +66,7 @@ class FieldError(BaseModel):
     message: Annotated[
         str,
         Field(
-            description="Human-readable text. Not stable; do not branch on it. Never echoes user input.",
+            description="Human-readable text. Not stable, do not branch on it. Never echoes user input.",
             examples=["Must be one of 90, 180, 270."],
             max_length=300,
         ),
@@ -89,10 +86,11 @@ class ProblemParamValue1(RootModel[str]):
 
 class Problem(BaseModel):
     """
-    RFC 9457 problem details, the single error envelope for every non-2xx
-    response (except the `/ready` 503 body). Media type `application/problem+json`.
-    `detail`, `errors[].message` and `params` never contain filenames, document
-    content, submitted URLs or option values.
+    RFC 9457 problem details, the single error envelope for every non-2xx response
+    (except the `/ready` 503 body). Media type `application/problem+json`.
+    `title` and `detail` come from a fixed table per `code`: they never contain raw
+    exception text, tool output, filenames, document content, submitted URLs or
+    option values. Field-level problems use `errors[].pointer`.
 
     """
 
@@ -102,7 +100,7 @@ class Problem(BaseModel):
     type: Annotated[
         str,
         Field(
-            description="URI reference identifying the problem type. Always `urn:problem:{code}`. Informational; branch on `code`.",
+            description="URI reference identifying the problem type. Always `urn:problem:{code}`. Informational, branch on `code`.",
             examples=["urn:problem:file_too_large"],
             max_length=100,
         ),
@@ -110,7 +108,7 @@ class Problem(BaseModel):
     title: Annotated[
         str,
         Field(
-            description="Short summary. Same for every occurrence of the same `code`. Not for branching.",
+            description="Short summary. Same for every occurrence of the same `code`.",
             examples=["File too large"],
             max_length=120,
         ),
@@ -127,15 +125,15 @@ class Problem(BaseModel):
     detail: Annotated[
         str | None,
         Field(
-            description="Occurrence-specific explanation, safe to show to the user.",
-            examples=["A file exceeds the maximum size for your plan."],
+            description="Occurrence-specific explanation from the fixed table, safe to show to the user.",
+            examples=["The upload exceeds the maximum size."],
             max_length=500,
         ),
     ] = None
     instance: Annotated[
         str | None,
         Field(
-            description="Identifies this occurrence as `urn:request:{request_id}`. Never a URL containing a job token or ticket.",
+            description="Identifies this occurrence as `urn:request:{request_id}`.",
             examples=["urn:request:req_7Qk2mX9aVb4Lp1Zs"],
             max_length=100,
         ),
@@ -152,7 +150,7 @@ class Problem(BaseModel):
     errors: Annotated[
         list[FieldError] | None,
         Field(
-            description="Field-level problems (validation_error, ai_consent_required, unsupported_type, url_blocked).",
+            description="Field-level problems (validation_error, unsupported_type, url_blocked, upstream_fetch_failed).",
             examples=[
                 [
                     {
@@ -168,7 +166,7 @@ class Problem(BaseModel):
     retry_after_seconds: Annotated[
         int | None,
         Field(
-            description="Same value as the `Retry-After` header, repeated for clients that cannot read headers cross-origin. Present with 429 and 503 backpressure.",
+            description="Same value as the `Retry-After` header, repeated for clients that cannot read headers cross-origin. Present with 429.",
             examples=[30],
             ge=1,
         ),
@@ -189,7 +187,7 @@ class Health(BaseModel):
 
 class CheckState(StrEnum):
     """
-    Outcome of one readiness check. Fixed vocabulary; never error text.
+    Outcome of one readiness check. Fixed vocabulary, never error text.
     """
 
     ok = "ok"
@@ -214,8 +212,7 @@ class ReadinessChecks(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    redis: CheckState
-    storage: CheckState
+    rate_limiter: CheckState
 
 
 class Readiness(BaseModel):
@@ -230,43 +227,248 @@ class Readiness(BaseModel):
     checks: ReadinessChecks
 
 
-class TierLimits(BaseModel):
+class Limits(BaseModel):
     """
-    Effective caps for one tier. Values come from server settings, never hard-coded by clients. Use them for UI hints only; the server enforces.
+    Global request limits. Values come from server settings, never hard-coded by clients. Use them for UI hints and pre-flight checks only, the server enforces.
     """
 
     model_config = ConfigDict(
         extra="forbid",
     )
-    max_file_bytes: Annotated[
+    max_request_bytes: Annotated[
         int,
         Field(
-            description="Maximum size of one file, in bytes.", examples=[26214400], ge=1
+            description="Maximum size of the whole request body in bytes (all files plus options). Recommended default 26214400 (25 MB), subject to the hosting platform payload limit.",
+            examples=[26214400],
+            ge=1,
         ),
     ]
-    max_files_per_job: Annotated[
-        int,
-        Field(description="Maximum inputs per job for this tier.", examples=[5], ge=1),
-    ]
     max_pages: Annotated[
-        int, Field(description="Maximum pages per document.", examples=[100], ge=1)
+        int, Field(description="Maximum pages per PDF document.", examples=[100], ge=1)
     ]
-    job_timeout_seconds: Annotated[
-        int, Field(description="Hard processing timeout.", examples=[120], ge=1)
+    large_files_enabled: Annotated[
+        bool,
+        Field(
+            description="True when the large-file flow (`/api/v1/uploads`) is available on this deployment.",
+            examples=[True],
+        ),
+    ]
+    max_large_file_bytes: Annotated[
+        int,
+        Field(
+            description="Maximum size of one file in the large-file flow, in bytes.",
+            examples=[524288000],
+            ge=1,
+        ),
+    ]
+    max_large_total_bytes: Annotated[
+        int,
+        Field(
+            description="Maximum total size of all files of one upload, in bytes.",
+            examples=[1073741824],
+            ge=1,
+        ),
+    ]
+    inline_max_bytes: Annotated[
+        int,
+        Field(
+            description="Largest total size the inline multipart flow accepts. Above this, use the large-file flow.",
+            examples=[4194304],
+            ge=1,
+        ),
     ]
 
 
-class TierLimitsByTier(BaseModel):
+class ContentType(StrEnum):
     """
-    Caps keyed by tier name.
+    Declared media type. Must be one the tool accepts (`Tool.accepts`).
+    """
+
+    application_pdf = "application/pdf"
+    image_jpeg = "image/jpeg"
+    image_png = "image/png"
+    image_webp = "image/webp"
+    image_tiff = "image/tiff"
+
+
+class CreateUploadFile(BaseModel):
+    """
+    One file to be uploaded. Only size and declared type; the real type is sniffed at run time.
     """
 
     model_config = ConfigDict(
         extra="forbid",
     )
-    free: TierLimits
-    personal: TierLimits
-    pro: TierLimits
+    size: Annotated[
+        int,
+        Field(
+            description="Exact size in bytes. The `PUT` must send exactly this many bytes.",
+            examples=[41943040],
+            ge=1,
+        ),
+    ]
+    content_type: Annotated[
+        ContentType,
+        Field(
+            description="Declared media type. Must be one the tool accepts (`Tool.accepts`).",
+            examples=["application/pdf"],
+        ),
+    ]
+
+
+class CreateUploadRequest(BaseModel):
+    """
+    Declares the files of one large-file run.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    tool: Annotated[
+        str,
+        Field(
+            description="Slug of the tool the files are for.",
+            examples=["merge-pdf"],
+            pattern="^[a-z0-9-]{1,64}$",
+        ),
+    ]
+    files: Annotated[
+        list[CreateUploadFile],
+        Field(description="Files in processing order, 1 to 20.", max_length=20, min_length=1),
+    ]
+
+
+class UploadTarget(BaseModel):
+    """
+    Where and how to upload one file.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    index: Annotated[
+        int,
+        Field(
+            description="Zero-based position in the request `files` array.",
+            examples=[0],
+            ge=0,
+            le=19,
+        ),
+    ]
+    put_url: Annotated[
+        AnyUrl,
+        Field(
+            description="Presigned URL. `PUT` the raw file bytes here. Treat as a secret, do not log.",
+            examples=["https://storage.example.com/uploads/opaque-0?signature=REDACTED"],
+        ),
+    ]
+    headers: Annotated[
+        dict[str, str],
+        Field(
+            description="Headers the client MUST send on the `PUT`, including `Content-Type` and `Content-Length`. Anything else breaks the signature.",
+            examples=[{"Content-Type": "application/pdf", "Content-Length": "41943040"}],
+        ),
+    ]
+
+
+class CreateUploadResponse(BaseModel):
+    """
+    Upload handle and one presigned target per declared file.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    upload_id: Annotated[
+        str,
+        Field(
+            description="Opaque url-safe identifier, at least 32 characters. Server-generated.",
+            examples=["u_Zk3p9Qx1Lm7Rt5Vb2Nc8Hd4Jf6Sg0Wa"],
+            pattern="^[A-Za-z0-9_-]{32,128}$",
+        ),
+    ]
+    expires_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="After this instant the presigned URLs and the upload are invalid.",
+            examples=["2026-11-04T13:00:00Z"],
+        ),
+    ]
+    files: Annotated[
+        list[UploadTarget],
+        Field(description="One target per request file, same order.", max_length=20, min_length=1),
+    ]
+
+
+class RunUploadedToolRequest(BaseModel):
+    """
+    Options for running a tool over uploaded files. All members optional.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    options: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="The tool options object (shape named by `Tool.options_schema`). Unknown keys are rejected with `validation_error`.",
+            examples=[{"keep_bookmarks": True}],
+        ),
+    ] = None
+    ai_consent: Annotated[
+        bool | None,
+        Field(
+            description="Explicit consent to AI processing, for tools that need it.",
+            examples=[False],
+        ),
+    ] = None
+    text: Annotated[
+        str | None,
+        Field(
+            description="Free text input, for tools that take it.",
+            examples=["Add this text"],
+            max_length=100000,
+        ),
+    ] = None
+
+
+class UploadResult(BaseModel):
+    """
+    A processed result held in storage for a short time.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    download_url: Annotated[
+        AnyUrl,
+        Field(
+            description="Short-lived presigned `GET` URL. Treat as a secret, do not log.",
+            examples=["https://storage.example.com/results/opaque-out?signature=REDACTED"],
+        ),
+    ]
+    filename: Annotated[
+        str,
+        Field(
+            description="Suggested filename, same pattern as the inline flow.",
+            examples=["merge-pdf-result.pdf"],
+            max_length=255,
+        ),
+    ]
+    media_type: Annotated[
+        str,
+        Field(
+            description="Media type of the result.", examples=["application/pdf"], max_length=100
+        ),
+    ]
+    size: Annotated[int, Field(description="Result size in bytes.", examples=[115343360], ge=0)]
+    expires_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="After this instant `download_url` stops working.",
+            examples=["2026-11-04T12:30:00Z"],
+        ),
+    ]
 
 
 class ToolCategory(StrEnum):
@@ -278,36 +480,32 @@ class ToolCategory(StrEnum):
     optimize = "optimize"
     convert_to_pdf = "convert-to-pdf"
     convert_from_pdf = "convert-from-pdf"
-    edit = "edit"
-    security = "security"
-    ocr = "ocr"
-    ai = "ai"
     compare = "compare"
-
-
-class Tier(StrEnum):
-    """
-    Plan tier, ordered free < personal < pro.
-    """
-
-    free = "free"
-    personal = "personal"
-    pro = "pro"
 
 
 class InputKind(StrEnum):
     """
-    Kind of input a tool accepts. file = multipart upload, url = web page address, text = plain text.
+    Kind of input a tool accepts. file = multipart upload, url = web page address in a JSON body.
     """
 
     file = "file"
     url = "url"
-    text = "text"
+
+
+class OutputKind(StrEnum):
+    """
+    What a successful response carries. pdf, zip and txt are attachments; json is an inline JSON body.
+    """
+
+    pdf = "pdf"
+    zip = "zip"
+    txt = "txt"
+    json = "json"
 
 
 class ToolStatus(StrEnum):
     """
-    available = the tool can be used now. coming_soon = listed for SEO and roadmap, job creation is refused with tool_unavailable.
+    available = the endpoint exists and works. coming_soon = listed for SEO and roadmap; the endpoint does not exist yet (framework 404).
     """
 
     available = "available"
@@ -323,18 +521,13 @@ class ToolFaqItem(BaseModel):
         extra="forbid",
     )
     question: Annotated[
-        str,
-        Field(
-            examples=["Are my files stored after merging?"],
-            max_length=200,
-            min_length=1,
-        ),
+        str, Field(examples=["Are my files stored after merging?"], max_length=200, min_length=1)
     ]
     answer: Annotated[
         str,
         Field(
             examples=[
-                "No. Files are deleted shortly after processing and delivery, with a scheduled cleanup as a safety net."
+                "No. The file is processed in memory and the result is returned in the same request. Nothing is saved on our servers."
             ],
             max_length=1000,
             min_length=1,
@@ -368,7 +561,7 @@ class ToolSeo(BaseModel):
         Field(
             description="Meta description.",
             examples=[
-                "Combine PDF files into one in seconds. Your files are deleted as soon as you download the result."
+                "Combine PDF files into one in seconds. Your files are never stored: the result comes straight back in the response."
             ],
             max_length=170,
             min_length=1,
@@ -398,7 +591,7 @@ class Accept(RootModel[str]):
 
 class Tool(BaseModel):
     """
-    One tool in the catalog.
+    One tool in the catalog. Its endpoint is POST /api/v1/{slug}.
     """
 
     model_config = ConfigDict(
@@ -407,7 +600,7 @@ class Tool(BaseModel):
     slug: Annotated[
         str,
         Field(
-            description="Stable kebab-case identifier. Used in URLs (/tools/{slug}) and as the `tool` field when creating a job. Never reused for a different tool.",
+            description="Stable kebab-case identifier. It is both the URL path segment (POST /api/v1/{slug}) and the landing-page route (/tools/{slug}). Never reused for a different tool.",
             examples=["merge-pdf"],
             max_length=64,
             min_length=3,
@@ -416,21 +609,13 @@ class Tool(BaseModel):
     ]
     category: ToolCategory
     title: Annotated[
-        str,
-        Field(
-            description="Display name.",
-            examples=["Merge PDF"],
-            max_length=60,
-            min_length=1,
-        ),
+        str, Field(description="Display name.", examples=["Merge PDF"], max_length=60, min_length=1)
     ]
     description: Annotated[
         str,
         Field(
             description="One-sentence summary for cards and listings.",
-            examples=[
-                "Combine several PDF files into one document, in the order you choose."
-            ],
+            examples=["Combine several PDF files into one document, in the order you choose."],
             max_length=200,
             min_length=1,
         ),
@@ -447,7 +632,7 @@ class Tool(BaseModel):
     input_kinds: Annotated[
         list[InputKind],
         Field(
-            description="Kinds of input accepted. Most tools are [file]; webpage comparison is [url]; text translation is [text] (or [file, text]).",
+            description="Kinds of input accepted. File tools are [file]; site comparison is [url].",
             examples=[["file"]],
             min_length=1,
         ),
@@ -463,7 +648,7 @@ class Tool(BaseModel):
     min_inputs: Annotated[
         int,
         Field(
-            description="Minimum number of inputs (files, URLs or text items) per job.",
+            description="Minimum number of inputs (files or URLs) per request.",
             examples=[2],
             ge=1,
             le=100,
@@ -472,8 +657,8 @@ class Tool(BaseModel):
     max_inputs: Annotated[
         int,
         Field(
-            description="Maximum number of inputs per job for this tool. The caller's tier may impose a lower cap (see tier_limits on GET /api/v1/tools); exceeding either returns too_many_files.",
-            examples=[20],
+            description="Maximum number of inputs per request. Exceeding it returns too_many_files.",
+            examples=[10],
             ge=1,
             le=100,
         ),
@@ -482,14 +667,12 @@ class Tool(BaseModel):
         str | None,
         Field(
             description="Name of the schema under components.schemas of shared/openapi.yaml that describes this tool's `options` object, or null when the tool takes no options.",
-            examples=["OptionsMerge", None],
+            examples=["MergePdfOptions", None],
             max_length=64,
-            pattern="^Options[A-Za-z0-9]+$",
+            pattern="^[A-Z][A-Za-z0-9]*Options$",
         ),
     ]
-    tier_required: Annotated[
-        Tier, Field(description="Lowest tier allowed to run the tool.")
-    ]
+    output_kind: OutputKind
     status: ToolStatus
     phase: Annotated[
         int,
@@ -500,361 +683,10 @@ class Tool(BaseModel):
             le=10,
         ),
     ]
-    requires_ai_consent: Annotated[
-        bool,
-        Field(
-            description="True for tools that send content to an AI provider. Job creation then requires ai_consent=true or fails with ai_consent_required.",
-            examples=[False],
-        ),
-    ]
     seo: ToolSeo
 
 
-class JobStatusValue(StrEnum):
-    """
-    Job lifecycle state. `queued` and `running` are transient; `succeeded`,
-    `failed`, `expired` and `deleted` are terminal. A failed job's content is
-    already deleted; `failed` is kept briefly so the client can read `error_code`.
-
-    """
-
-    queued = "queued"
-    running = "running"
-    succeeded = "succeeded"
-    failed = "failed"
-    expired = "expired"
-    deleted = "deleted"
-
-
-class ResultKind(StrEnum):
-    """
-    Kind of the output file, decided by the worker from the produced bytes. Multi-file outputs (for example split, PDF to images) are delivered as a single `zip`.
-    """
-
-    pdf = "pdf"
-    png = "png"
-    jpg = "jpg"
-    webp = "webp"
-    tiff = "tiff"
-    docx = "docx"
-    xlsx = "xlsx"
-    pptx = "pptx"
-    txt = "txt"
-    md = "md"
-    html = "html"
-    json = "json"
-    zip = "zip"
-
-
-class JobResult(BaseModel):
-    """
-    Describes the downloadable output. Contains no filename.
-    """
-
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    kind: ResultKind
-    size_bytes: Annotated[int, Field(examples=[1048576], ge=0)]
-    content_type: Annotated[
-        str,
-        Field(
-            description="Media type the download will carry.",
-            examples=["application/pdf"],
-            max_length=127,
-        ),
-    ]
-
-
-class JobCreated(BaseModel):
-    """
-    Returned with 202. Contains the only copy of the job token.
-    """
-
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    job_id: Annotated[
-        str,
-        Field(
-            description="Opaque job id, 128 random bits as 32 lowercase hex characters. Carries no meaning; not a secret on its own (the job token is).",
-            examples=["3f2a9c4e7b1d4e6f8a0b5c7d9e1f2a3b"],
-            pattern="^[0-9a-f]{32}$",
-        ),
-    ]
-    job_token: Annotated[
-        str,
-        Field(
-            description="Capability secret for this job, shown once. Send as `X-Job-Token`. Keep in memory only.",
-            examples=["k3Jq9Xv2LmN8pRt5Yw1ZaB7cDe4FgH6iJ0KoPsUuVxQ"],
-            max_length=43,
-            min_length=43,
-            pattern="^[A-Za-z0-9_-]{43}$",
-        ),
-    ]
-    status: Annotated[
-        JobStatusValue,
-        Field(description="Always `queued` on creation.", examples=["queued"]),
-    ]
-    created_at: Annotated[AwareDatetime, Field(examples=["2026-10-31T09:15:00Z"])]
-    expires_at: Annotated[
-        AwareDatetime,
-        Field(
-            description="Hard deadline for everything in the job (60 minutes after creation at creation time).",
-            examples=["2026-10-31T10:15:00Z"],
-        ),
-    ]
-    poll_after_ms: Annotated[
-        int,
-        Field(
-            description="Suggested delay before the first status poll.",
-            examples=[1000],
-            ge=0,
-        ),
-    ]
-
-
-class JobStatus(BaseModel):
-    """
-    Job state. Never contains filenames, content, URLs or option values.
-    """
-
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    job_id: Annotated[
-        str,
-        Field(
-            description="Opaque job id, 128 random bits as 32 lowercase hex characters. Carries no meaning; not a secret on its own (the job token is).",
-            examples=["3f2a9c4e7b1d4e6f8a0b5c7d9e1f2a3b"],
-            pattern="^[0-9a-f]{32}$",
-        ),
-    ]
-    tool: Annotated[
-        str,
-        Field(
-            description="Tool slug.",
-            examples=["merge-pdf"],
-            max_length=64,
-            min_length=3,
-            pattern="^[a-z0-9]+(-[a-z0-9]+)*$",
-        ),
-    ]
-    status: JobStatusValue
-    progress: Annotated[
-        int,
-        Field(
-            description="Coarse progress 0 to 100. 0 while queued, 100 when terminal.",
-            examples=[45],
-            ge=0,
-            le=100,
-        ),
-    ]
-    error_code: Annotated[
-        ErrorCode | None,
-        Field(
-            description="Set only when `status` is `failed`. Same vocabulary as `Problem.code`; typical values are `invalid_file`, `too_many_pages`, `url_blocked`, `ai_provider_unavailable`, `job_timeout`, `processing_failed`.",
-            examples=[None, "too_many_pages"],
-        ),
-    ]
-    created_at: Annotated[AwareDatetime, Field(examples=["2026-10-31T09:15:00Z"])]
-    expires_at: Annotated[
-        AwareDatetime,
-        Field(
-            description="Current deletion deadline of the output. Moves earlier (first completed download plus 2 minutes) after delivery. Never later than creation plus 60 minutes.",
-            examples=["2026-10-31T10:15:00Z"],
-        ),
-    ]
-    poll_after_ms: Annotated[
-        int,
-        Field(
-            description="Suggested delay before the next poll; 0 when terminal.",
-            examples=[1000],
-            ge=0,
-        ),
-    ]
-    result: Annotated[
-        JobResult | None,
-        Field(
-            description="Present only when `status` is `succeeded`.",
-            examples=[
-                None,
-                {
-                    "kind": "pdf",
-                    "size_bytes": 1048576,
-                    "content_type": "application/pdf",
-                },
-            ],
-        ),
-    ]
-
-
-class DownloadTicket(BaseModel):
-    """
-    Single-use, 60-second capability for one download.
-    """
-
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    ticket: Annotated[
-        str,
-        Field(
-            description="256-bit random secret encoded as 43 URL-safe base64 characters (no padding). Used for job tokens and download tickets. Treat as a credential and never log or persist it.",
-            examples=["k3Jq9Xv2LmN8pRt5Yw1ZaB7cDe4FgH6iJ0KoPsUuVxQ"],
-            max_length=43,
-            min_length=43,
-            pattern="^[A-Za-z0-9_-]{43}$",
-        ),
-    ]
-    download_url: Annotated[
-        AnyUrl,
-        Field(
-            description="Absolute URL of `GET /api/v1/download/{ticket}`. It is a credential for 60 seconds, so do not log, share or store it.",
-            examples=[
-                "https://api.example.com/api/v1/download/Zr4Tg8Hn1Wc6Vb3Xk9Mq2Ld5Pf0Js7Ay_Eu-IoRtNhB"
-            ],
-        ),
-    ]
-    expires_at: Annotated[AwareDatetime, Field(examples=["2026-10-31T09:16:30Z"])]
-    expires_in_seconds: Annotated[int, Field(examples=[60], ge=1, le=300)]
-
-
-class DeletionOutcome(StrEnum):
-    """
-    `deleted`: storage confirmed removal (200).
-    `already_absent`: nothing was left, repeat call (200).
-    `pending_retry`: a storage error occurred and the sweeper will retry (202).
-
-    """
-
-    deleted = "deleted"
-    already_absent = "already_absent"
-    pending_retry = "pending_retry"
-
-
-class JobDeletion(BaseModel):
-    """
-    Honest report of a user-initiated deletion.
-    """
-
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    job_id: Annotated[
-        str,
-        Field(
-            description="Opaque job id, 128 random bits as 32 lowercase hex characters. Carries no meaning; not a secret on its own (the job token is).",
-            examples=["3f2a9c4e7b1d4e6f8a0b5c7d9e1f2a3b"],
-            pattern="^[0-9a-f]{32}$",
-        ),
-    ]
-    outcome: DeletionOutcome
-    deleted_objects: Annotated[
-        int,
-        Field(
-            description="Number of stored objects removed by this call.",
-            examples=[2],
-            ge=0,
-        ),
-    ]
-    hard_delete_by: Annotated[
-        AwareDatetime | None,
-        Field(
-            description="Set only for `pending_retry`, as the latest time the content can still exist (the hard TTL). Otherwise null.",
-            examples=[None, "2026-10-31T11:15:00Z"],
-        ),
-    ]
-
-
-class JobCreateMultipart(BaseModel):
-    """
-    Multipart body of `createJob`. Part names are exactly the property names below.
-    Unknown parts are rejected with `validation_error`.
-
-    """
-
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    tool: Annotated[
-        str,
-        Field(
-            description="Slug of an `available` tool whose `input_kinds` contains `file`.",
-            examples=["merge-pdf"],
-            max_length=64,
-            min_length=3,
-            pattern="^[a-z0-9]+(-[a-z0-9]+)*$",
-        ),
-    ]
-    options: Annotated[
-        str | None,
-        Field(
-            description="JSON object, sent as a part with Content-Type `application/json`. Its shape is\nthe schema named by the tool's `options_schema` (one of the `Options*` schemas).\nStrictly validated: unknown keys are rejected. Omit for defaults.\n",
-            examples=['{"keep_bookmarks":true}'],
-            json_schema_extra={
-                "contentMediaType": "application/json",
-                "contentSchema": {"$ref": "#/components/schemas/JobOptions"},
-            },
-        ),
-    ] = None
-    ai_consent: Annotated[
-        bool,
-        Field(
-            description="Must be `true` when the tool's `requires_ai_consent` is true, otherwise the\nrequest fails with `ai_consent_required`. Ignored (and never recorded) for\nother tools. Consent is per request; only the fact of consent is recorded,\nnever content.\n",
-            examples=[False],
-        ),
-    ] = False
-    files: Annotated[
-        list[bytes],
-        Field(
-            description="One or more files, in significant order. Count must satisfy the tool's `min_inputs`/`max_inputs` and the tier cap.",
-            examples=[["<binary PDF bytes>", "<binary PDF bytes>"]],
-            max_length=100,
-            min_length=1,
-        ),
-    ]
-
-
-class UrlInput(BaseModel):
-    """
-    A web page address to fetch (webpage comparison).
-    """
-
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    kind: Annotated[Literal["url"], Field(examples=["url"])]
-    url: Annotated[
-        AnyUrl,
-        Field(
-            description="Absolute http or https URL, at most 2048 characters, no credentials, port 80 or 443 only.",
-            examples=["https://example.org/pricing"],
-        ),
-    ]
-
-
-class TextInput(BaseModel):
-    """
-    Plain text to process (translation).
-    """
-
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    kind: Annotated[Literal["text"], Field(examples=["text"])]
-    text: Annotated[
-        str,
-        Field(
-            description="UTF-8 text. Length caps are per tier and enforced server-side (`file_too_large` with `params.limit_bytes` when exceeded).",
-            examples=["Bonjour tout le monde."],
-            max_length=200000,
-            min_length=1,
-        ),
-    ]
-
-
-class OptionsMerge(BaseModel):
+class MergePdfOptions(BaseModel):
     """
     Options for `merge-pdf`.
     """
@@ -863,14 +695,13 @@ class OptionsMerge(BaseModel):
         extra="forbid",
     )
     keep_bookmarks: Annotated[
-        bool,
-        Field(description="Preserve each source document's outline.", examples=[True]),
+        bool, Field(description="Preserve each source document's outline.", examples=[True])
     ] = True
 
 
-class OptionsSplit(BaseModel):
+class SplitPdfOptions(BaseModel):
     """
-    Options for `split-pdf`. Exactly one of `ranges` or `every_n` is required. The result is a `zip` of parts.
+    Options for `split-pdf`. Exactly one of `ranges` or `every_n` is required (otherwise `validation_error`).
     """
 
     model_config = ConfigDict(
@@ -879,7 +710,7 @@ class OptionsSplit(BaseModel):
     ranges: Annotated[
         str | None,
         Field(
-            description="Comma-separated 1-based pages and ranges, such as `1-3,5,8-10`. Grammar enforced by the server; pages beyond the document are a failed job (`invalid_file`).",
+            description="Comma-separated 1-based pages and ranges, such as `1-3,5,8-10`. Pages beyond the document are `400 validation_error`.",
             examples=["1-3,5,8-10"],
             max_length=200,
             min_length=1,
@@ -888,13 +719,31 @@ class OptionsSplit(BaseModel):
     ] = None
     every_n: Annotated[
         int | None,
-        Field(
-            description="Split into parts of this many pages each.",
-            examples=[10],
-            ge=1,
-            le=500,
-        ),
+        Field(description="Split into parts of this many pages each.", examples=[10], ge=1, le=500),
     ] = None
+
+
+class PageOrderItem(RootModel[int]):
+    root: Annotated[int, Field(ge=1, le=500)]
+
+
+class OrganizePdfOptions(BaseModel):
+    """
+    Options for `organize-pdf`.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    page_order: Annotated[
+        list[PageOrderItem],
+        Field(
+            description="1-based source pages in their new order. A page that is absent is removed, a page listed twice is duplicated.",
+            examples=[[3, 1, 2, 2]],
+            max_length=500,
+            min_length=1,
+        ),
+    ]
 
 
 class RotationAngle(IntEnum):
@@ -907,7 +756,7 @@ class RotationAngle(IntEnum):
     integer_270 = 270
 
 
-class OptionsRotate(BaseModel):
+class RotatePdfOptions(BaseModel):
     """
     Options for `rotate-pdf`.
     """
@@ -928,29 +777,6 @@ class OptionsRotate(BaseModel):
     ] = None
 
 
-class PageOrderItem(RootModel[int]):
-    root: Annotated[int, Field(ge=1, le=500)]
-
-
-class OptionsOrganize(BaseModel):
-    """
-    Options for `organize-pdf`. Reorders, duplicates or removes pages.
-    """
-
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    page_order: Annotated[
-        list[PageOrderItem],
-        Field(
-            description="1-based source pages in their new order. A page that is absent is removed; a page listed twice is duplicated.",
-            examples=[[3, 1, 2, 2]],
-            max_length=500,
-            min_length=1,
-        ),
-    ]
-
-
 class CompressionLevel(StrEnum):
     """
     Trade-off between size and quality.
@@ -961,7 +787,7 @@ class CompressionLevel(StrEnum):
     high = "high"
 
 
-class OptionsCompress(BaseModel):
+class CompressPdfOptions(BaseModel):
     """
     Options for `compress-pdf`.
     """
@@ -992,9 +818,9 @@ class PageOrientation(StrEnum):
     landscape = "landscape"
 
 
-class OptionsImagesToPdf(BaseModel):
+class ImageToPdfOptions(BaseModel):
     """
-    Options for `images-to-pdf`.
+    Options for `image-to-pdf`.
     """
 
     model_config = ConfigDict(
@@ -1014,9 +840,9 @@ class ImageFormat(StrEnum):
     jpg = "jpg"
 
 
-class OptionsPdfToImages(BaseModel):
+class PdfToImagesOptions(BaseModel):
     """
-    Options for `pdf-to-images`. The result is a `zip` of images.
+    Options for `pdf-to-images`.
     """
 
     model_config = ConfigDict(
@@ -1027,7 +853,7 @@ class OptionsPdfToImages(BaseModel):
     pages: Annotated[
         str | None,
         Field(
-            description="Comma-separated 1-based pages and ranges, such as `1-3,5,8-10`. Grammar enforced by the server; pages beyond the document are a failed job (`invalid_file`).",
+            description="Comma-separated 1-based pages and ranges, such as `1-3,5,8-10`. Pages beyond the document are `400 validation_error`.",
             examples=["1-3,5,8-10"],
             max_length=200,
             min_length=1,
@@ -1036,46 +862,38 @@ class OptionsPdfToImages(BaseModel):
     ] = None
 
 
-class OptionsTranslateText(BaseModel):
+class ExtractTextOptions(BaseModel):
     """
-    Options for `translate-text` (AI; requires consent).
+    Options for `extract-text`.
     """
 
     model_config = ConfigDict(
         extra="forbid",
     )
-    target_language: Annotated[
-        str,
-        Field(
-            description="BCP 47 language tag of the output language.",
-            examples=["en"],
-            max_length=35,
-            pattern="^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$",
-        ),
-    ]
-    source_language: Annotated[
+    pages: Annotated[
         str | None,
         Field(
-            description="BCP 47 tag of the input language. Omit to auto-detect.",
-            examples=["fr"],
-            max_length=35,
-            pattern="^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$",
+            description="Pages to extract. Omit for all pages.",
+            examples=["1-3,5,8-10"],
+            max_length=200,
+            min_length=1,
+            pattern="^[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*$",
         ),
     ] = None
 
 
 class CompareGranularity(StrEnum):
     """
-    Unit of comparison.
+    Unit of comparison for the diff.
     """
 
     word = "word"
     line = "line"
 
 
-class OptionsCompareWebpages(BaseModel):
+class CompareSitesOptions(BaseModel):
     """
-    Options for `compare-webpages`.
+    Options for `compare-sites`.
     """
 
     model_config = ConfigDict(
@@ -1085,9 +903,301 @@ class OptionsCompareWebpages(BaseModel):
     granularity: CompareGranularity | None = "line"
 
 
+class MergePdfRequest(BaseModel):
+    """
+    Multipart body of `POST /api/v1/merge-pdf`. Part names are exactly the property names. Unknown parts are rejected with `validation_error`.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    files: Annotated[
+        list[bytes],
+        Field(
+            description="PDF files in significant order (2 to 10).",
+            examples=[["<binary PDF bytes>", "<binary PDF bytes>"]],
+            max_length=10,
+            min_length=2,
+        ),
+    ]
+    options: Annotated[
+        str | None,
+        Field(
+            description="Optional JSON object sent as a part with Content-Type `application/json`, shaped as `MergePdfOptions`. Omit for defaults.",
+            examples=['{"keep_bookmarks":true}'],
+            json_schema_extra={
+                "contentMediaType": "application/json",
+                "contentSchema": {"$ref": "#/components/schemas/MergePdfOptions"},
+            },
+        ),
+    ] = None
+
+
+class SplitPdfRequest(BaseModel):
+    """
+    Multipart body of `POST /api/v1/split-pdf`. Part names are exactly the property names. Unknown parts are rejected with `validation_error`.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    file: Annotated[bytes, Field(description="One PDF file.", examples=["<binary PDF bytes>"])]
+    options: Annotated[
+        str | None,
+        Field(
+            description="Optional JSON object sent as a part with Content-Type `application/json`, shaped as `SplitPdfOptions`. Omit for defaults.",
+            examples=['{"every_n":10}'],
+            json_schema_extra={
+                "contentMediaType": "application/json",
+                "contentSchema": {"$ref": "#/components/schemas/SplitPdfOptions"},
+            },
+        ),
+    ] = None
+
+
+class OrganizePdfRequest(BaseModel):
+    """
+    Multipart body of `POST /api/v1/organize-pdf`. Part names are exactly the property names. Unknown parts are rejected with `validation_error`.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    file: Annotated[bytes, Field(description="One PDF file.", examples=["<binary PDF bytes>"])]
+    options: Annotated[
+        str | None,
+        Field(
+            description="Optional JSON object sent as a part with Content-Type `application/json`, shaped as `OrganizePdfOptions`. Omit for defaults.",
+            examples=['{"page_order":[3,1,2,2]}'],
+            json_schema_extra={
+                "contentMediaType": "application/json",
+                "contentSchema": {"$ref": "#/components/schemas/OrganizePdfOptions"},
+            },
+        ),
+    ] = None
+
+
+class RotatePdfRequest(BaseModel):
+    """
+    Multipart body of `POST /api/v1/rotate-pdf`. Part names are exactly the property names. Unknown parts are rejected with `validation_error`.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    file: Annotated[bytes, Field(description="One PDF file.", examples=["<binary PDF bytes>"])]
+    options: Annotated[
+        str | None,
+        Field(
+            description="Optional JSON object sent as a part with Content-Type `application/json`, shaped as `RotatePdfOptions`. Omit for defaults.",
+            examples=['{"angle":90}'],
+            json_schema_extra={
+                "contentMediaType": "application/json",
+                "contentSchema": {"$ref": "#/components/schemas/RotatePdfOptions"},
+            },
+        ),
+    ] = None
+
+
+class CompressPdfRequest(BaseModel):
+    """
+    Multipart body of `POST /api/v1/compress-pdf`. Part names are exactly the property names. Unknown parts are rejected with `validation_error`.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    file: Annotated[bytes, Field(description="One PDF file.", examples=["<binary PDF bytes>"])]
+    options: Annotated[
+        str | None,
+        Field(
+            description="Optional JSON object sent as a part with Content-Type `application/json`, shaped as `CompressPdfOptions`. Omit for defaults.",
+            examples=['{"level":"medium"}'],
+            json_schema_extra={
+                "contentMediaType": "application/json",
+                "contentSchema": {"$ref": "#/components/schemas/CompressPdfOptions"},
+            },
+        ),
+    ] = None
+
+
+class ImageToPdfRequest(BaseModel):
+    """
+    Multipart body of `POST /api/v1/image-to-pdf`. Part names are exactly the property names. Unknown parts are rejected with `validation_error`.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    files: Annotated[
+        list[bytes],
+        Field(
+            description="image files in significant order (1 to 20).",
+            examples=[["<binary image bytes>"]],
+            max_length=20,
+            min_length=1,
+        ),
+    ]
+    options: Annotated[
+        str | None,
+        Field(
+            description="Optional JSON object sent as a part with Content-Type `application/json`, shaped as `ImageToPdfOptions`. Omit for defaults.",
+            examples=['{"page_size":"a4"}'],
+            json_schema_extra={
+                "contentMediaType": "application/json",
+                "contentSchema": {"$ref": "#/components/schemas/ImageToPdfOptions"},
+            },
+        ),
+    ] = None
+
+
+class PdfToImagesRequest(BaseModel):
+    """
+    Multipart body of `POST /api/v1/pdf-to-images`. Part names are exactly the property names. Unknown parts are rejected with `validation_error`.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    file: Annotated[bytes, Field(description="One PDF file.", examples=["<binary PDF bytes>"])]
+    options: Annotated[
+        str | None,
+        Field(
+            description="Optional JSON object sent as a part with Content-Type `application/json`, shaped as `PdfToImagesOptions`. Omit for defaults.",
+            examples=['{"format":"png","dpi":150}'],
+            json_schema_extra={
+                "contentMediaType": "application/json",
+                "contentSchema": {"$ref": "#/components/schemas/PdfToImagesOptions"},
+            },
+        ),
+    ] = None
+
+
+class ExtractTextRequest(BaseModel):
+    """
+    Multipart body of `POST /api/v1/extract-text`. Part names are exactly the property names. Unknown parts are rejected with `validation_error`.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    file: Annotated[bytes, Field(description="One PDF file.", examples=["<binary PDF bytes>"])]
+    options: Annotated[
+        str | None,
+        Field(
+            description="Optional JSON object sent as a part with Content-Type `application/json`, shaped as `ExtractTextOptions`. Omit for defaults.",
+            examples=['{"pages":"1-5"}'],
+            json_schema_extra={
+                "contentMediaType": "application/json",
+                "contentSchema": {"$ref": "#/components/schemas/ExtractTextOptions"},
+            },
+        ),
+    ] = None
+
+
+class CompareSitesRequest(BaseModel):
+    """
+    JSON body of `POST /api/v1/compare-sites`.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    url_a: Annotated[
+        AnyUrl,
+        Field(
+            description="First page. Absolute http or https URL, at most 2048 characters, no credentials, port 80 or 443 only.",
+            examples=["https://example.org/pricing"],
+        ),
+    ]
+    url_b: Annotated[
+        AnyUrl,
+        Field(
+            description="Second page, same rules as `url_a`.",
+            examples=["https://example.org/pricing-new"],
+        ),
+    ]
+    options: CompareSitesOptions | None = None
+
+
+class DiffOp(StrEnum):
+    """
+    Kind of a diff entry.
+    """
+
+    equal = "equal"
+    add = "add"
+    remove = "remove"
+
+
+class DiffEntry(BaseModel):
+    """
+    One diff unit (a line or a word, per `granularity`). `text` is page content, returned only to the requester and never logged.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    op: DiffOp
+    text: Annotated[str, Field(examples=["Pro plan 6.99 USD per month"], max_length=5000)]
+
+
+class DiffSummary(BaseModel):
+    """
+    Counts over the full diff, including entries cut by truncation.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    added: Annotated[int, Field(examples=[1], ge=0)]
+    removed: Annotated[int, Field(examples=[1], ge=0)]
+    unchanged: Annotated[int, Field(examples=[2], ge=0)]
+    similarity: Annotated[
+        float,
+        Field(
+            description="Similarity ratio, 0 (nothing in common) to 1 (identical).",
+            examples=[0.67],
+            ge=0.0,
+            le=1.0,
+        ),
+    ]
+
+
+class CompareSitesResult(BaseModel):
+    """
+    Diff of the visible text of the two pages. The response is capped by a server setting (`truncated` reports a cut).
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    summary: DiffSummary
+    diff: Annotated[
+        list[DiffEntry],
+        Field(
+            examples=[
+                [
+                    {"op": "equal", "text": "Pricing"},
+                    {"op": "remove", "text": "Pro plan 5.99 USD per month"},
+                    {"op": "add", "text": "Pro plan 6.99 USD per month"},
+                ]
+            ],
+            max_length=20000,
+        ),
+    ]
+    truncated: Annotated[
+        bool,
+        Field(
+            description="True when `diff` was cut at the server cap. `summary` still covers the full diff.",
+            examples=[False],
+        ),
+    ]
+
+
 class ToolList(BaseModel):
     """
-    The catalog plus the caps that apply per tier.
+    The catalog plus the global limits.
     """
 
     model_config = ConfigDict(
@@ -1108,15 +1218,14 @@ class ToolList(BaseModel):
                         "input_kinds": ["file"],
                         "accepts": ["application/pdf"],
                         "min_inputs": 2,
-                        "max_inputs": 20,
-                        "options_schema": "OptionsMerge",
-                        "tier_required": "free",
-                        "status": "coming_soon",
+                        "max_inputs": 10,
+                        "options_schema": "MergePdfOptions",
+                        "output_kind": "pdf",
+                        "status": "available",
                         "phase": 2,
-                        "requires_ai_consent": False,
                         "seo": {
                             "title": "Merge PDF files online, without keeping them",
-                            "description": "Combine PDF files into one in seconds. Your files are deleted as soon as you download the result.",
+                            "description": "Combine PDF files into one in seconds. Your files are never stored, the result comes straight back in the response.",
                             "keywords": ["merge pdf", "combine pdf"],
                         },
                     }
@@ -1124,58 +1233,4 @@ class ToolList(BaseModel):
             ],
         ),
     ]
-    tier_limits: TierLimitsByTier
-
-
-class JobCreateInline(BaseModel):
-    """
-    JSON body of `createInlineJob`.
-    """
-
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    tool: Annotated[
-        str,
-        Field(
-            description="Slug of an `available` tool whose `input_kinds` contains `url` or `text`.",
-            examples=["compare-webpages"],
-            max_length=64,
-            min_length=3,
-            pattern="^[a-z0-9]+(-[a-z0-9]+)*$",
-        ),
-    ]
-    inputs: Annotated[
-        list[Annotated[UrlInput | TextInput, Field(discriminator="kind")]],
-        Field(
-            description="Inputs in significant order. Count must satisfy the tool's `min_inputs`/`max_inputs`.",
-            examples=[
-                [
-                    {"kind": "url", "url": "https://example.org/pricing"},
-                    {"kind": "url", "url": "https://example.org/pricing-new"},
-                ]
-            ],
-            max_length=10,
-            min_length=1,
-        ),
-    ]
-    options: Annotated[
-        OptionsMerge
-        | OptionsSplit
-        | OptionsRotate
-        | OptionsOrganize
-        | OptionsCompress
-        | OptionsImagesToPdf
-        | OptionsPdfToImages
-        | OptionsTranslateText
-        | OptionsCompareWebpages
-        | None,
-        Field(
-            description="Shape given by the tool's `options_schema`. Strictly validated. Omit for defaults.",
-            examples=[{"ignore_whitespace": True, "granularity": "line"}],
-        ),
-    ] = None
-    ai_consent: Annotated[
-        bool,
-        Field(description="Same rule as in `JobCreateMultipart`.", examples=[False]),
-    ] = False
+    limits: Limits

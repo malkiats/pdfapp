@@ -8,11 +8,12 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { categoryHref, getCategoryById } from "@/lib/config/categories";
 import { retentionSentence } from "@/lib/config/retention";
 import { siteConfig } from "@/lib/config/site";
-import { acceptLabel, MB } from "@/lib/format";
+import { acceptLabel } from "@/lib/format";
 import { breadcrumbJsonLd, faqJsonLd, toolJsonLd } from "@/lib/seo";
 import { getToolsInCategory, hasFileInput, toolHref } from "@/services/catalog";
 import type { Tool } from "@/types/catalog";
 import { ToolGrid } from "./ToolGrid";
+import { PAGE_WORKSPACE_TOOLS } from "./pageWorkspaces";
 import { ToolIcon } from "./ToolIcon";
 import { ToolWorkspace } from "./ToolWorkspace";
 
@@ -111,7 +112,8 @@ export function ToolPage({ tool }: { tool: Tool }) {
               <p className="mt-3 max-w-2xl text-lg text-muted">{tool.description}</p>
             </div>
           </div>
-          <div className="mt-8 max-w-3xl">
+          {/* Page-level workspaces (thumbnail grid + side panel) use the full width. */}
+          <div className={PAGE_WORKSPACE_TOOLS.has(tool.slug) ? "mt-8" : "mt-8 max-w-3xl"}>
             <ToolWorkspace
               toolSlug={tool.slug}
               title={tool.title}

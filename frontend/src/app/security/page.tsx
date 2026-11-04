@@ -29,9 +29,10 @@ export default function SecurityPage() {
         <Prose>
           <h2>Access to your results</h2>
           <p>
-            Each task gets a random identifier and a private access token that only your browser receives, once. The
-            token is kept in memory, not saved in your browser storage or put in a web address. Downloads use a
-            single-use link that expires after about a minute.
+            Most files are sent with your request and the result comes back in the response. Large files are uploaded
+            and downloaded through short-lived signed links that only your browser receives. Your uploaded files are
+            deleted right after processing, and the result shortly after you download it. Automatic cleanup removes
+            anything left within 1 hour, with a 1-day backstop.
           </p>
           <h2>Isolated processing</h2>
           <p>

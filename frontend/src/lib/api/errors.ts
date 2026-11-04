@@ -25,6 +25,10 @@ const MESSAGES: Record<string, string> = {
   result_too_large: "The result is too large to download. Try fewer pages or a lower resolution.",
   ai_unavailable: "The AI service is not available right now. Please try again later.",
   network_error: "Could not reach the server. Check your connection; if your files are large, try smaller ones.",
+  upload_failed: "A file could not be uploaded. Check your connection and try again.",
+  upload_incomplete: "The upload did not finish. Please try again.",
+  large_files_unavailable: "Large files cannot be processed right now. Try a smaller file, or try again later.",
+  cancelled: "The request was cancelled.",
 };
 
 const GENERIC = "Something went wrong. Please try again.";

@@ -25,6 +25,7 @@ from pdfapp.backend.app.lib.common import (
     pdf_text,
     pikepdf_bytes,
     read_pdf,
+    result_too_large,
     text_result,
     validation_error,
     writer_bytes,
@@ -177,6 +178,10 @@ def images_to_pdf(inp: ToolInput, slug: str) -> ToolResult:
 # ================================================================ PDF -> images
 
 
+# About 40 megapixels per rendered page (e.g. A4 at ~550 dpi).
+MAX_RENDER_PIXELS = 40_000_000
+
+
 def pdf_to_images(inp: ToolInput, fmt: str, slug: str) -> ToolResult:
     read_pdf(inp.files[0], inp)  # validates, counts pages, rejects encrypted files
     dpi = opt_int(inp, "dpi", 110, 50, 300)
@@ -188,17 +193,32 @@ def pdf_to_images(inp: ToolInput, fmt: str, slug: str) -> ToolResult:
         total = len(doc)
         spec = opt_str(inp, "pages")
         indices = parse_pages(spec, total) if spec else list(range(total))
+        scale = dpi / 72
+        for i in indices:  # check every page before rendering any (decompression bombs)
+            width, height = doc.get_page_size(i)
+            if width * height * scale * scale > MAX_RENDER_PIXELS:
+                raise ApiError(
+                    422,
+                    "processing_failed",
+                    detail="A page is too large to render at this resolution. Lower the DPI.",
+                )
         entries = []
+        produced = 0
         for i in indices:
             page = doc[i]
-            image = page.render(scale=dpi / 72).to_pil()
+            image = page.render(scale=scale).to_pil()
+            page.close()
             buf = io.BytesIO()
             if fmt == "png":
                 image.save(buf, format="PNG", optimize=True)
             else:
                 image.convert("RGB").save(buf, format="JPEG", quality=85, optimize=True)
-            entries.append((f"page-{i + 1:03d}.{fmt}", buf.getvalue()))
-            page.close()
+            image.close()
+            data = buf.getvalue()
+            produced += len(data)
+            if produced > inp.max_output_bytes:
+                raise result_too_large()
+            entries.append((f"page-{i + 1:03d}.{fmt}", data))
     finally:
         doc.close()
     return ToolResult(zip_bytes(entries), "application/zip", f"{slug}-result.zip")
@@ -490,15 +510,23 @@ def ocr_pdf(inp: ToolInput) -> ToolResult:
         raise ApiError(422, "ocr_unavailable", detail="OCR library not found.") from e
 
     pdf = open_pikepdf(inp.files[0], inp)
-
+    scale = 150 / 72
     try:
-        from PIL import Image
-        for page_num, page in enumerate(pdf.pages):
-            # Render page to image for OCR
-            doc = pdfium.PdfDocument(inp.files[0])
-            try:
+        doc = pdfium.PdfDocument(inp.files[0])  # opened once, not once per page
+    except pdfium.PdfiumError as e:
+        raise ApiError(422, "invalid_file", detail="The file is not a valid PDF.") from e
+    try:
+        for i in range(len(doc)):  # decompression-bomb check before rendering anything
+            width, height = doc.get_page_size(i)
+            if width * height * scale * scale > MAX_RENDER_PIXELS:
+                raise ApiError(
+                    422, "processing_failed", detail="A page is too large to process."
+                )
+        try:
+            for page_num in range(len(doc)):
                 pdfium_page = doc[page_num]
-                image = pdfium_page.render(scale=150 / 72).to_pil()
+                image = pdfium_page.render(scale=scale).to_pil()
+                pdfium_page.close()
 
                 # Run OCR
                 text = pytesseract.image_to_string(image)
@@ -506,11 +534,11 @@ def ocr_pdf(inp: ToolInput) -> ToolResult:
                     # Add text layer (simplified - just add as comment for now)
                     # Full implementation would embed OCR text properly
                     pass
-            finally:
-                doc.close()
-    except Exception:
-        # Return original PDF if OCR fails
-        pass
+        except Exception:  # noqa: BLE001, S110 - existing behaviour: OCR is best-effort
+            # Return original PDF if OCR fails
+            pass
+    finally:
+        doc.close()
 
     return pdf_result(pikepdf_bytes(pdf), "ocr-pdf")
 

@@ -316,6 +316,81 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start a large-file upload
+         * @description Large-file flow, step 1 of 3. Additive to the inline multipart flow: use it when a
+         *     file set exceeds `limits.inline_max_bytes` and `limits.large_files_enabled` is true.
+         *     Declares the files; the server returns one presigned `PUT` target per file. The
+         *     client never chooses object keys. Then: `PUT` each file to its `put_url` sending
+         *     exactly the returned `headers` (step 2), and call `runUploadedTool` (step 3).
+         *     Per-file size is capped by `limits.max_large_file_bytes`, the sum by
+         *     `limits.max_large_total_bytes`; either overrun is `413 file_too_large`.
+         *     `503 large_files_unavailable` means storage is not configured on this deployment:
+         *     fall back to the inline flow.
+         */
+        post: operations["createUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/uploads/{upload_id}/run/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run a tool on uploaded files
+         * @description Large-file flow, step 3 of 3. Runs tool `slug` over the files of `upload_id`, in
+         *     `files[].index` order, after the client has finished every `PUT`. The server
+         *     verifies each object exists with the declared size, else `409 upload_incomplete`.
+         *     Returns a short-lived `download_url` for the result instead of the file body.
+         *     `options`, `ai_consent` and `text` mean the same as the multipart parts of the
+         *     inline `POST /api/v1/{slug}` operation for that tool.
+         */
+        post: operations["runUploadedTool"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/uploads/{upload_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete an upload
+         * @description Deletes the inputs and any outputs of the upload. Idempotent: always `204` for a
+         *     well-formed id, whether or not it exists or has expired. Clients should call it
+         *     when done; the server also expires uploads on its own.
+         */
+        delete: operations["deleteUpload"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -326,12 +401,12 @@ export interface components {
          *     the matching HTTP class. HTTP status per code: 400 bad_request, validation_error,
          *     too_many_files, too_many_pages, unsupported_type, type_mismatch, invalid_file,
          *     file_encrypted, url_blocked; 404 not_found; 413 file_too_large; 429 rate_limited;
-         *     500 processing_failed, internal_error; 502 upstream_fetch_failed; 504
+         *     409 upload_incomplete; 415 unsupported_type (large-file run); 422 processing_failed (large-file run); 500 processing_failed, internal_error; 503 large_files_unavailable; 502 upstream_fetch_failed; 504
          *     processing_timeout.
          * @example file_too_large
          * @enum {string}
          */
-        ErrorCode: "bad_request" | "validation_error" | "file_too_large" | "too_many_files" | "too_many_pages" | "unsupported_type" | "type_mismatch" | "invalid_file" | "file_encrypted" | "url_blocked" | "rate_limited" | "upstream_fetch_failed" | "processing_failed" | "processing_timeout" | "internal_error" | "not_found";
+        ErrorCode: "bad_request" | "validation_error" | "file_too_large" | "too_many_files" | "too_many_pages" | "unsupported_type" | "type_mismatch" | "invalid_file" | "file_encrypted" | "url_blocked" | "rate_limited" | "upstream_fetch_failed" | "processing_failed" | "processing_timeout" | "internal_error" | "not_found" | "large_files_unavailable" | "upload_incomplete";
         /**
          * @description One field-level problem inside a `Problem.errors` list.
          * @example {
@@ -494,7 +569,11 @@ export interface components {
          * @description Global request limits. Values come from server settings, never hard-coded by clients. Use them for UI hints and pre-flight checks only, the server enforces.
          * @example {
          *       "max_request_bytes": 26214400,
-         *       "max_pages": 100
+         *       "max_pages": 100,
+         *       "large_files_enabled": true,
+         *       "max_large_file_bytes": 524288000,
+         *       "max_large_total_bytes": 1073741824,
+         *       "inline_max_bytes": 4194304
          *     }
          */
         Limits: {
@@ -508,6 +587,201 @@ export interface components {
              * @example 100
              */
             max_pages: number;
+            /**
+             * @description True when the large-file flow (`/api/v1/uploads`) is available on this deployment.
+             * @example true
+             */
+            large_files_enabled: boolean;
+            /**
+             * @description Maximum size of one file in the large-file flow, in bytes.
+             * @example 524288000
+             */
+            max_large_file_bytes: number;
+            /**
+             * @description Maximum total size of all files of one upload, in bytes.
+             * @example 1073741824
+             */
+            max_large_total_bytes: number;
+            /**
+             * @description Largest total size the inline multipart flow accepts. Above this, use the large-file flow.
+             * @example 4194304
+             */
+            inline_max_bytes: number;
+        };
+        /**
+         * @description One file to be uploaded. Only size and declared type; the real type is sniffed at run time.
+         * @example {
+         *       "size": 41943040,
+         *       "content_type": "application/pdf"
+         *     }
+         */
+        CreateUploadFile: {
+            /**
+             * @description Exact size in bytes. The `PUT` must send exactly this many bytes.
+             * @example 41943040
+             */
+            size: number;
+            /**
+             * @description Declared media type. Must be one the tool accepts (`Tool.accepts`).
+             * @example application/pdf
+             * @enum {string}
+             */
+            content_type: "application/pdf" | "image/jpeg" | "image/png" | "image/webp" | "image/tiff";
+        };
+        /**
+         * @description Declares the files of one large-file run.
+         * @example {
+         *       "tool": "merge-pdf",
+         *       "files": [
+         *         {
+         *           "size": 41943040,
+         *           "content_type": "application/pdf"
+         *         }
+         *       ]
+         *     }
+         */
+        CreateUploadRequest: {
+            /**
+             * @description Slug of the tool the files are for.
+             * @example merge-pdf
+             */
+            tool: string;
+            /** @description Files in processing order, 1 to 20. */
+            files: components["schemas"]["CreateUploadFile"][];
+        };
+        /**
+         * @description Where and how to upload one file.
+         * @example {
+         *       "index": 0,
+         *       "put_url": "https://storage.example.com/uploads/opaque-0?signature=REDACTED",
+         *       "headers": {
+         *         "Content-Type": "application/pdf",
+         *         "Content-Length": "41943040"
+         *       }
+         *     }
+         */
+        UploadTarget: {
+            /**
+             * @description Zero-based position in the request `files` array.
+             * @example 0
+             */
+            index: number;
+            /**
+             * Format: uri
+             * @description Presigned URL. `PUT` the raw file bytes here. Treat as a secret, do not log.
+             * @example https://storage.example.com/uploads/opaque-0?signature=REDACTED
+             */
+            put_url: string;
+            /**
+             * @description Headers the client MUST send on the `PUT`, including `Content-Type` and `Content-Length`. Anything else breaks the signature.
+             * @example {
+             *       "Content-Type": "application/pdf",
+             *       "Content-Length": "41943040"
+             *     }
+             */
+            headers: {
+                [key: string]: string;
+            };
+        };
+        /**
+         * @description Upload handle and one presigned target per declared file.
+         * @example {
+         *       "upload_id": "u_Zk3p9Qx1Lm7Rt5Vb2Nc8Hd4Jf6Sg0Wa",
+         *       "expires_at": "2026-11-04T13:00:00Z",
+         *       "files": [
+         *         {
+         *           "index": 0,
+         *           "put_url": "https://storage.example.com/uploads/opaque-0?signature=REDACTED",
+         *           "headers": {
+         *             "Content-Type": "application/pdf",
+         *             "Content-Length": "41943040"
+         *           }
+         *         }
+         *       ]
+         *     }
+         */
+        CreateUploadResponse: {
+            /**
+             * @description Opaque url-safe identifier, at least 32 characters. Server-generated.
+             * @example u_Zk3p9Qx1Lm7Rt5Vb2Nc8Hd4Jf6Sg0Wa
+             */
+            upload_id: string;
+            /**
+             * Format: date-time
+             * @description After this instant the presigned URLs and the upload are invalid.
+             * @example 2026-11-04T13:00:00Z
+             */
+            expires_at: string;
+            /** @description One target per request file, same order. */
+            files: components["schemas"]["UploadTarget"][];
+        };
+        /**
+         * @description Options for running a tool over uploaded files. All members optional.
+         * @example {
+         *       "options": {
+         *         "keep_bookmarks": true
+         *       }
+         *     }
+         */
+        RunUploadedToolRequest: {
+            /**
+             * @description The tool options object (shape named by `Tool.options_schema`). Unknown keys are rejected with `validation_error`.
+             * @example {
+             *       "keep_bookmarks": true
+             *     }
+             */
+            options?: {
+                [key: string]: unknown;
+            };
+            /**
+             * @description Explicit consent to AI processing, for tools that need it.
+             * @example false
+             */
+            ai_consent?: boolean;
+            /**
+             * @description Free text input, for tools that take it.
+             * @example Add this text
+             */
+            text?: string;
+        };
+        /**
+         * @description A processed result held in storage for a short time.
+         * @example {
+         *       "download_url": "https://storage.example.com/results/opaque-out?signature=REDACTED",
+         *       "filename": "merge-pdf-result.pdf",
+         *       "media_type": "application/pdf",
+         *       "size": 115343360,
+         *       "expires_at": "2026-11-04T12:30:00Z"
+         *     }
+         */
+        UploadResult: {
+            /**
+             * Format: uri
+             * @description Short-lived presigned `GET` URL. Treat as a secret, do not log.
+             * @example https://storage.example.com/results/opaque-out?signature=REDACTED
+             */
+            download_url: string;
+            /**
+             * @description Suggested filename, same pattern as the inline flow.
+             * @example merge-pdf-result.pdf
+             */
+            filename: string;
+            /**
+             * @description Media type of the result.
+             * @example application/pdf
+             */
+            media_type: string;
+            /**
+             * @description Result size in bytes.
+             * @example 115343360
+             */
+            size: number;
+            /**
+             * Format: date-time
+             * @description After this instant `download_url` stops working.
+             * @example 2026-11-04T12:30:00Z
+             */
+            expires_at: string;
         };
         /**
          * @description The catalog plus the global limits.
@@ -515,7 +789,11 @@ export interface components {
          *       "items": [],
          *       "limits": {
          *         "max_request_bytes": 26214400,
-         *         "max_pages": 100
+         *         "max_pages": 100,
+         *         "large_files_enabled": true,
+         *         "max_large_file_bytes": 524288000,
+         *         "max_large_total_bytes": 1073741824,
+         *         "inline_max_bytes": 4194304
          *       }
          *     }
          */
@@ -539,7 +817,7 @@ export interface components {
              *         "max_inputs": 10,
              *         "options_schema": "MergePdfOptions",
              *         "output_kind": "pdf",
-             *         "status": "coming_soon",
+             *         "status": "available",
              *         "phase": 2,
              *         "seo": {
              *           "title": "Merge PDF files online, without keeping them",
@@ -1256,7 +1534,13 @@ export interface components {
             };
         };
     };
-    parameters: never;
+    parameters: {
+        /**
+         * @description Opaque upload identifier from `createUpload`.
+         * @example u_Zk3p9Qx1Lm7Rt5Vb2Nc8Hd4Jf6Sg0Wa
+         */
+        UploadId: string;
+    };
     requestBodies: never;
     headers: {
         /**
@@ -1734,6 +2018,189 @@ export interface operations {
             500: components["responses"]["ServerError"];
             502: components["responses"]["BadGateway"];
             504: components["responses"]["GatewayTimeout"];
+        };
+    };
+    createUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Upload created. Valid until `expires_at`. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControlNoStore"];
+                    "RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "RateLimit-Reset": components["headers"]["RateLimitReset"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateUploadResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            /** @description Unknown tool slug. */
+            404: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControlNoStore"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            413: components["responses"]["PayloadTooLarge"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
+            /** @description Large-file storage is not configured on this deployment. Use the inline flow. */
+            503: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControlNoStore"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    runUploadedTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Opaque upload identifier from `createUpload`.
+                 * @example u_Zk3p9Qx1Lm7Rt5Vb2Nc8Hd4Jf6Sg0Wa
+                 */
+                upload_id: components["parameters"]["UploadId"];
+                /**
+                 * @description Tool slug from the catalog.
+                 * @example merge-pdf
+                 */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunUploadedToolRequest"];
+            };
+        };
+        responses: {
+            /** @description Processed. Fetch the result from `download_url` before `expires_at`. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControlNoStore"];
+                    "RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "RateLimit-Reset": components["headers"]["RateLimitReset"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            /** @description Unknown or expired upload, or unknown tool. */
+            404: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControlNoStore"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description An uploaded object is missing or its size differs from the declaration. PUT again, then retry. */
+            409: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControlNoStore"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description An uploaded file is not a type the tool accepts (sniffed by magic bytes). May also be returned as 400 `unsupported_type`; branch on `code`. */
+            415: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControlNoStore"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The tool could not process the input (corrupt, encrypted, over page cap). */
+            422: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControlNoStore"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
+            /** @description Large-file storage is not configured or temporarily unavailable. */
+            503: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControlNoStore"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            504: components["responses"]["GatewayTimeout"];
+        };
+    };
+    deleteUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Opaque upload identifier from `createUpload`.
+                 * @example u_Zk3p9Qx1Lm7Rt5Vb2Nc8Hd4Jf6Sg0Wa
+                 */
+                upload_id: components["parameters"]["UploadId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted, or nothing to delete. No body. */
+            204: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControlNoStore"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
 }

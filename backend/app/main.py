@@ -10,7 +10,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pdfapp.backend.app.api import health, tools
+from pdfapp.backend.app.api import health, tools, uploads
 from pdfapp.backend.app.core.config import get_settings
 from pdfapp.backend.app.core.logging import configure_logging, get_logger
 from pdfapp.backend.app.middleware.errors import register_exception_handlers
@@ -87,12 +87,23 @@ def create_app(settings=None) -> FastAPI:
             requests_per_minute=settings.rate_limit.per_ip_per_minute
         )
         app.add_middleware(RateLimitMiddleware, rate_limiter=rate_limiter)
+    # Per-operation limits for the expensive large-file routes (on top of the global one).
+    app.state.upload_limiters = (
+        {
+            op: InMemoryRateLimiter(
+                requests_per_minute=settings.rate_limit.uploads_per_ip_per_minute
+            )
+            for op in ("create", "run")
+        }
+        if settings.rate_limit.enabled
+        else {}
+    )
     app.add_middleware(RequestContextMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],  # anonymous API, no cookies or auth
-        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "If-None-Match", "X-Request-Id"],
         expose_headers=["Content-Disposition", "X-Request-Id", "ETag"],
         allow_credentials=False,
@@ -104,6 +115,8 @@ def create_app(settings=None) -> FastAPI:
 
     # Routes
     app.include_router(health.router, tags=["health"])
+    # Before tools: POST /api/v1/uploads must not be captured by POST /api/v1/{slug}.
+    app.include_router(uploads.router)
     app.include_router(tools.router, tags=["catalog", "tools"])
 
     # Store settings in app state for access in routes

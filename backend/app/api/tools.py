@@ -4,16 +4,24 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Callable
-from typing import Annotated, Any, Final
+from typing import Annotated, Final
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Header, Query, Request
 from fastapi.responses import Response
+from pdfapp.backend.app.api.tool_runner import (
+    Handler,
+    build_tool_input,
+    check_options,
+    execute,
+    find_tool,
+    runnable_tool,
+    validate_inputs,
+)
 from pdfapp.backend.app.core.errors import ApiError
 from pdfapp.backend.app.core.logging import get_logger
 from pdfapp.backend.app.lib import ai, pdf_ops, web
-from pdfapp.backend.app.lib.common import ToolInput, ToolResult
+from pdfapp.backend.app.lib.common import result_too_large
 from pdfapp.backend.app.lib.multipart import parse_multipart
 from starlette.concurrency import run_in_threadpool
 
@@ -24,8 +32,6 @@ CATALOG_CACHE_CONTROL: Final = "public, max-age=300"
 TOOL_CACHE_CONTROL: Final = "no-store"
 # Vercel Functions cannot return bodies above 4.5 MB.
 MAX_RESULT_BYTES: Final = 4_400_000
-
-Handler = Callable[[ToolInput], ToolResult]
 
 HANDLERS: Final[dict[str, Handler]] = {
     # organize
@@ -85,8 +91,6 @@ HANDLERS: Final[dict[str, Handler]] = {
     "handwriting-to-text": pdf_ops.handwriting_to_text,
 }
 
-_MAX_TEXT_CHARS: Final = 100_000
-
 
 def _make_etag(data: bytes) -> str:
     return f'"{hashlib.md5(data).hexdigest()[:16]}"'  # noqa: S324 - cache key, not security
@@ -99,49 +103,6 @@ def _etag_matches(header: str | None, etag: str) -> bool:
         return True
     candidates = {c.strip().removeprefix("W/") for c in header.split(",")}
     return etag in candidates
-
-
-def _sniff_mime(data: bytes) -> str:
-    """Decide the type from magic bytes; never trust the client's Content-Type."""
-    if data.startswith(b"%PDF"):
-        return "application/pdf"
-    if data.startswith(b"\xff\xd8\xff"):
-        return "image/jpeg"
-    if data.startswith(b"\x89PNG\r\n\x1a\n"):
-        return "image/png"
-    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
-        return "image/webp"
-    if data[:4] in (b"II*\x00", b"MM\x00*"):
-        return "image/tiff"
-    if b"\x00" not in data[:4096]:
-        try:
-            data[:65536].decode("utf-8")
-            return "text/plain"
-        except UnicodeDecodeError:
-            pass
-    return "application/octet-stream"
-
-
-def _accepted(mime: str, accepts: list[str]) -> bool:
-    normalized = {"image/jpg": "image/jpeg", "text/markdown": "text/plain"}
-    allowed = {normalized.get(a, a) for a in accepts}
-    return mime in allowed
-
-
-def _find_tool(request: Request, slug: str) -> dict[str, Any]:
-    for tool in request.app.state.catalog_data.get("tools", []):
-        if tool.get("slug") == slug:
-            return tool  # type: ignore[no-any-return]
-    raise ApiError(404, "not_found", detail="No such tool.")
-
-
-def _bad(code: str, message: str, pointer: str, status: int = 400) -> ApiError:
-    return ApiError(
-        status,
-        code,
-        detail=message,
-        errors=[{"pointer": pointer, "code": code, "message": message}],
-    )
 
 
 @router.get("/tools", summary="List the tool catalog")
@@ -165,6 +126,10 @@ async def listTools(  # noqa: N802
             "limits": {
                 "max_request_bytes": settings.limits.max_request_bytes,
                 "max_pages": settings.limits.max_pages,
+                "large_files_enabled": settings.large_files_enabled,
+                "max_large_file_bytes": settings.limits.max_large_file_bytes,
+                "max_large_total_bytes": settings.limits.max_large_total_bytes,
+                "inline_max_bytes": settings.limits.inline_max_bytes,
             },
         },
         ensure_ascii=False,
@@ -179,7 +144,7 @@ async def listTools(  # noqa: N802
 
 @router.get("/tools/{slug}", summary="Get one tool")
 async def getTool(request: Request, slug: str) -> Response:  # noqa: N802
-    body = json.dumps(_find_tool(request, slug), ensure_ascii=False).encode("utf-8")
+    body = json.dumps(find_tool(request, slug), ensure_ascii=False).encode("utf-8")
     return Response(
         content=body,
         media_type="application/json",
@@ -189,10 +154,7 @@ async def getTool(request: Request, slug: str) -> Response:  # noqa: N802
 
 @router.post("/{slug}", summary="Run a tool")
 async def runTool(request: Request, slug: str) -> Response:  # noqa: N802
-    tool = _find_tool(request, slug)
-    handler = HANDLERS.get(slug)
-    if tool.get("status") != "available" or handler is None:
-        raise ApiError(404, "not_found", detail="This tool is not available yet.")
+    tool, handler = runnable_tool(request, slug, HANDLERS)
 
     content_type = request.headers.get("content-type", "")
     try:
@@ -213,60 +175,36 @@ async def runTool(request: Request, slug: str) -> Response:  # noqa: N802
         options = json.loads(options_raw) if isinstance(options_raw, str) and options_raw else {}
     except json.JSONDecodeError as e:
         raise ApiError(400, "validation_error", detail="Options must be valid JSON.") from e
-    if not isinstance(options, dict):
-        raise ApiError(400, "validation_error", detail="Options must be a JSON object.")
+    options = check_options(options)
 
     def text_field(name: str) -> str:
         value = form.get(name, "")
         return value if isinstance(value, str) else ""
 
     text = text_field("text")
-    if len(text) > _MAX_TEXT_CHARS:
-        raise _bad("validation_error", "The text is too long.", "/text")
     urls = [u for u in (text_field("url_a") or text_field("url"), text_field("url_b")) if u.strip()]
-
-    kinds: list[str] = tool.get("input_kinds", [])
-    if "file" in kinds and (files or kinds == ["file"]):
-        lo, hi = int(tool.get("min_inputs", 1)), int(tool.get("max_inputs", 1))
-        if len(files) < lo:
-            raise _bad("validation_error", f"This tool needs at least {lo} file(s).", "/files")
-        if len(files) > hi:
-            raise _bad("too_many_files", f"This tool accepts at most {hi} file(s).", "/files")
-        for i, data in enumerate(files):
-            if not _accepted(_sniff_mime(data), tool.get("accepts", [])):
-                raise _bad("unsupported_type", "File type not accepted.", f"/files/{i}")
-    elif kinds == ["url"] and len(urls) < int(tool.get("min_inputs", 1)):
-        raise _bad("validation_error", "Enter the page address(es).", "/url_a")
-    elif not files and not urls and not text.strip():
-        raise _bad("validation_error", "Provide some input.", "/text")
-
-    if tool.get("requires_ai_consent") and text_field("ai_consent").lower() != "true":
-        raise _bad("validation_error", "Consent is required for AI processing.", "/ai_consent")
+    validate_inputs(
+        tool,
+        files=files,
+        urls=urls,
+        text=text,
+        ai_consent=text_field("ai_consent").lower() == "true",
+    )
 
     settings = request.app.state.settings
-    tool_input = ToolInput(
+    tool_input = build_tool_input(
+        settings,
         files=files,
         options=options,
         text=text,
         urls=urls,
         max_pages=settings.limits.max_pages,
-        groq_api_key=settings.groq_api_key.get_secret_value() if settings.groq_api_key else None,
-        groq_model=settings.groq_model,
+        max_output_bytes=MAX_RESULT_BYTES,
     )
-    try:
-        result = await run_in_threadpool(handler, tool_input)
-    except ApiError:
-        raise
-    except Exception as e:
-        log.error("tool_failed", tool=slug, error_class=type(e).__name__)
-        raise ApiError(422, "processing_failed", detail="The file could not be processed.") from e
+    result = await run_in_threadpool(execute, handler, tool_input, slug)
 
     if len(result.content) > MAX_RESULT_BYTES:
-        raise ApiError(
-            413,
-            "result_too_large",
-            detail="The result is too large to download. Try fewer pages or lower quality.",
-        )
+        raise result_too_large()
     log.info("tool_succeeded", tool=slug, output_bytes=len(result.content))
     return Response(
         content=result.content,

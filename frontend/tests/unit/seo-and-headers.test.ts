@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import sitemap from "@/app/sitemap";
 import robots from "@/app/robots";
 import { categories, categoryHref } from "@/lib/config/categories";
+import { resolveUploadOrigins } from "@/lib/env";
 import { buildCsp, securityHeaders } from "@/lib/security-headers";
 import { serializeJsonLd } from "@/lib/seo";
 import { getAllTools } from "@/services/catalog";
@@ -33,6 +34,37 @@ describe("security headers", () => {
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("upgrade-insecure-requests");
     expect(csp).not.toContain("unsafe-eval");
+  });
+
+  it("adds large-file storage origins to connect-src only", () => {
+    const origins = resolveUploadOrigins(" https://acct.r2.cloudflarestorage.com/bucket , https://cdn.example.com ");
+    expect(origins).toEqual(["https://acct.r2.cloudflarestorage.com", "https://cdn.example.com"]);
+    const csp = buildCsp({ apiBaseUrl: "https://api.example.com", isDev: false, uploadOrigins: origins });
+    expect(csp).toContain("connect-src 'self' https://api.example.com https://acct.r2.cloudflarestorage.com https://cdn.example.com;");
+    expect(csp).toContain("default-src 'self';");
+    expect(resolveUploadOrigins(undefined)).toEqual([]);
+    expect(() => resolveUploadOrigins("javascript:alert(1)")).toThrow();
+  });
+
+  it("rejects wildcard, CSP-syntax and insecure upload origins", () => {
+    expect(() => resolveUploadOrigins("https://*")).toThrow();
+    expect(() => resolveUploadOrigins("https://*.r2.dev")).toThrow();
+    expect(() => resolveUploadOrigins("https://a;b")).toThrow();
+    expect(() => resolveUploadOrigins("https://a b")).toThrow();
+    // http: never in production, only localhost in development.
+    expect(() => resolveUploadOrigins("http://storage.example.com", true)).toThrow();
+    expect(() => resolveUploadOrigins("http://localhost:9000", true)).toThrow();
+    expect(() => resolveUploadOrigins("http://storage.example.com", false)).toThrow();
+    expect(resolveUploadOrigins("http://localhost:9000", false)).toEqual(["http://localhost:9000"]);
+    expect(resolveUploadOrigins("https://acct.r2.cloudflarestorage.com", true)).toEqual(["https://acct.r2.cloudflarestorage.com"]);
+  });
+
+  it("refuses CSP sources that are not plain origins", () => {
+    const base = { apiBaseUrl: "https://api.example.com", isDev: false };
+    for (const bad of ["https://*", "https://a.com;script-src *", "https://a.com https://b.com", "https://a.com,https://b.com", "https://a.com/path", "'unsafe-inline'"]) {
+      expect(() => buildCsp({ ...base, uploadOrigins: [bad] })).toThrow();
+    }
+    expect(() => buildCsp({ ...base, uploadOrigins: ["https://ok.example.com"] })).not.toThrow();
   });
 
   it("allows eval and websockets only in development", () => {

@@ -32,16 +32,22 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+import pdfapp.backend.app.schemas.generated.models as generated
 import pytest
 import yaml
 from jsonschema import Draft202012Validator
+from pdfapp.backend.app.main import create_app
+from pdfapp.backend.tests.conftest import (
+    CATALOG_PATH,
+    CATALOG_SCHEMA_PATH,
+    OPENAPI_PATH,
+    make_settings,
+)
 from pydantic import BaseModel
 
-import pdfapp.backend.app.schemas.generated.models as generated
-from pdfapp.backend.app.main import create_app
-from pdfapp.backend.tests.conftest import CATALOG_PATH, CATALOG_SCHEMA_PATH, OPENAPI_PATH, make_settings
-
 IMPLEMENTED_PHASE = 1
+# Later-phase operations that already ship and are therefore checked in full.
+IMPLEMENTED_AHEAD = frozenset({"createUpload", "runUploadedTool", "deleteUpload"})
 HTTP_METHODS = ("get", "put", "post", "delete", "patch", "options", "head")
 API_PREFIX = "/api/v1"
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
@@ -122,6 +128,9 @@ def normalize(schema: Any, root: dict[str, Any], depth: int = 0) -> Any:
         schema["enum"] = [schema.pop("const")]
     if schema.get("format") in UNREPRESENTABLE_FORMATS:
         schema.pop("format")
+    if schema.get("format") == "uri" and schema.get("minLength") == 1:
+        # pydantic's AnyUrl always emits minLength 1; an empty string is never a uri anyway.
+        schema.pop("minLength")
     out: dict[str, Any] = {}
     for key, value in schema.items():
         if key == "anyOf":
@@ -163,9 +172,15 @@ OPERATIONS = list(contract_operations())
 OP_IDS = [op["operationId"] for _, _, op in OPERATIONS]
 
 
+def _is_future(op: dict[str, Any]) -> bool:
+    return (
+        int(op.get("x-phase", 1)) > IMPLEMENTED_PHASE and op["operationId"] not in IMPLEMENTED_AHEAD
+    )
+
+
 def _skip_if_future(op: dict[str, Any]) -> None:
     phase = int(op.get("x-phase", 1))
-    if phase > IMPLEMENTED_PHASE:
+    if _is_future(op):
         pytest.skip(
             f"{op['operationId']}: x-phase {phase} > IMPLEMENTED_PHASE {IMPLEMENTED_PHASE} "
             "(not yet implemented)"
@@ -183,7 +198,7 @@ def _served_op(served: dict[str, Any], path: str, method: str) -> dict[str, Any]
 def test_operation_exists_with_same_id(
     served: dict[str, Any], path: str, method: str, op: dict[str, Any]
 ) -> None:
-    if int(op.get("x-phase", 1)) > IMPLEMENTED_PHASE:
+    if _is_future(op):
         item = served["paths"].get(path, {})
         assert method not in item, f"{op['operationId']} is served before its phase"
     _skip_if_future(op)
@@ -368,11 +383,23 @@ def test_no_hand_mirrored_contract_models() -> None:
     assert offenders == []
 
 
-def test_generated_models_are_current(tmp_path: Path) -> None:
+@pytest.fixture
+def codegen_out() -> Iterator[Path]:
+    # Must live inside backend/: the ruff-format pass picks up pyproject.toml (line-length
+    # 100) from the output location, exactly like `make codegen` and the CI drift step.
+    out_dir = BACKEND_ROOT / "var" / "codegen-check"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        yield out_dir / "models.py"
+    finally:
+        shutil.rmtree(out_dir, ignore_errors=True)
+
+
+def test_generated_models_are_current(codegen_out: Path) -> None:
     exe = shutil.which("datamodel-codegen")
     if exe is None:
         pytest.skip("datamodel-codegen not installed (dev dependency)")
-    out = tmp_path / "models.py"
+    out = codegen_out
     subprocess.run(  # noqa: S603 - fixed argv, no user input
         [
             exe,

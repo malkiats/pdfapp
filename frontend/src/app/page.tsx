@@ -9,7 +9,6 @@ import { CategoryCard } from "@/components/tools/CategoryCard";
 import { ToolGrid } from "@/components/tools/ToolGrid";
 import { Faq } from "@/components/ui/Faq";
 import { JsonLd } from "@/components/ui/JsonLd";
-import { retentionSentence } from "@/lib/config/retention";
 import { siteConfig } from "@/lib/config/site";
 import { faqJsonLd, organizationJsonLd, pageMetadata, websiteJsonLd } from "@/lib/seo";
 import { getActiveCategories, getPopularTools, getToolSummaries, getToolsInCategory } from "@/services/catalog";

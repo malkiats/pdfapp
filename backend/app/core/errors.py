@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Final
 
 from fastapi.responses import JSONResponse
-
 from pdfapp.backend.app.core.request_context import current_request_id, new_request_id
 
 PROBLEM_MEDIA_TYPE: Final = "application/problem+json"
@@ -30,6 +29,8 @@ TITLES: Final[dict[str, str]] = {
     "wrong_password": "Wrong password",
     "result_too_large": "Result too large",
     "ai_unavailable": "AI service unavailable",
+    "large_files_unavailable": "Large files unavailable",
+    "upload_incomplete": "Upload incomplete",
 }
 
 

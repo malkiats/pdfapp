@@ -68,6 +68,32 @@ export const siteUrl = resolveSiteUrl(
 /** Base URL of the document API (browser uploads and downloads go here directly). */
 export const apiBaseUrl = resolveApiBaseUrl({ NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL }, isProduction);
 
+/**
+ * Origins of the large-file storage (presigned PUT targets), from the optional
+ * comma-separated NEXT_PUBLIC_UPLOAD_ORIGINS. Added to CSP connect-src; invalid
+ * entries fail the build rather than silently weakening the policy.
+ */
+export function resolveUploadOrigins(raw: string | undefined, production: boolean = isProduction): string[] {
+  if (!present(raw)) return [];
+  return raw
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean)
+    .map((v) => {
+      const url = new URL(parseBaseUrl(v, "NEXT_PUBLIC_UPLOAD_ORIGINS"));
+      if (!/^[a-z0-9.-]+$/i.test(url.hostname)) {
+        throw new Error("NEXT_PUBLIC_UPLOAD_ORIGINS entries must be plain host names");
+      }
+      const local = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+      if (url.protocol !== "https:" && (production || !local)) {
+        throw new Error("NEXT_PUBLIC_UPLOAD_ORIGINS entries must use https (http only for localhost in development)");
+      }
+      return url.origin;
+    });
+}
+
+export const uploadOrigins = resolveUploadOrigins(process.env.NEXT_PUBLIC_UPLOAD_ORIGINS);
+
 /** Builds an absolute URL on the site for a path such as `/tools`. */
 export function absoluteUrl(path = "/"): string {
   return `${siteUrl}${path.startsWith("/") ? path : `/${path}`}`;

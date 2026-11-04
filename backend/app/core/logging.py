@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import MutableMapping
 from typing import Any
 
 import structlog
@@ -12,7 +13,9 @@ _EVENT_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 _INVALID_EVENT = "log_event_invalid"
 
 
-def _sanitize_event(logger: Any, method_name: str, event_dict: dict[str, Any]) -> dict[str, Any]:
+def _sanitize_event(
+    logger: Any, method_name: str, event_dict: MutableMapping[str, Any]
+) -> MutableMapping[str, Any]:
     """Validate and sanitize the event name. Non-matching events become 'log_event_invalid'."""
     event = event_dict.get("event", "")
     if event and not _EVENT_NAME_RE.match(str(event)):
@@ -41,6 +44,6 @@ def configure_logging() -> None:
     )
 
 
-def get_logger(name: str = __name__) -> structlog.wrap_logger:
+def get_logger(name: str = __name__) -> structlog.stdlib.BoundLogger:
     """Get a structlog logger."""
-    return structlog.get_logger(name)
+    return structlog.stdlib.get_logger(name)
