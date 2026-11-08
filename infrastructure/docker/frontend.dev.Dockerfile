@@ -4,7 +4,7 @@
 # Production frontend is built and served by Vercel (infrastructure/deployment).
 # Source is bind-mounted at runtime; this image only prepares writable, node-owned
 # mount points so named volumes for node_modules/.next inherit the right owner.
-FROM node:24.22.2-alpine@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85
+FROM node:26.12.1-alpine@sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797
 
 ENV NEXT_TELEMETRY_DISABLED=1 \
     NPM_CONFIG_UPDATE_NOTIFIER=false
