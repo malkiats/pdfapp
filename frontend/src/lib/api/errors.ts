@@ -18,6 +18,8 @@ const MESSAGES: Record<string, string> = {
   rate_limited: "Too many requests. Please wait a moment and try again.",
   upstream_fetch_failed: "One of the pages could not be fetched.",
   processing_failed: "We could not process this file.",
+  no_text_layer:
+    "This PDF has no selectable text (it looks like a scanned document). Run it through OCR PDF first, then try again.",
   processing_timeout: "Processing took too long. Try a smaller file or fewer pages.",
   internal_error: "Something went wrong on our side.",
   not_found: "This tool is not available yet.",

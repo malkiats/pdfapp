@@ -31,6 +31,7 @@ TITLES: Final[dict[str, str]] = {
     "ai_unavailable": "AI service unavailable",
     "large_files_unavailable": "Large files unavailable",
     "upload_incomplete": "Upload incomplete",
+    "no_text_layer": "No selectable text",
 }
 
 

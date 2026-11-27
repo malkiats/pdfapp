@@ -83,8 +83,8 @@ def _document_text(inp: ToolInput) -> str:
             if not text.strip():
                 raise ApiError(
                     422,
-                    "processing_failed",
-                    detail="This PDF has no selectable text (it may be a scan).",
+                    "no_text_layer",
+                    detail="This PDF has no selectable text (it may be a scan). Run OCR first.",
                 )
             return text
         return data.decode("utf-8", errors="replace")

@@ -406,7 +406,7 @@ export interface components {
          * @example file_too_large
          * @enum {string}
          */
-        ErrorCode: "bad_request" | "validation_error" | "file_too_large" | "too_many_files" | "too_many_pages" | "unsupported_type" | "type_mismatch" | "invalid_file" | "file_encrypted" | "url_blocked" | "rate_limited" | "upstream_fetch_failed" | "processing_failed" | "processing_timeout" | "internal_error" | "not_found" | "large_files_unavailable" | "upload_incomplete";
+        ErrorCode: "bad_request" | "validation_error" | "file_too_large" | "too_many_files" | "too_many_pages" | "unsupported_type" | "type_mismatch" | "invalid_file" | "file_encrypted" | "url_blocked" | "rate_limited" | "upstream_fetch_failed" | "processing_failed" | "processing_timeout" | "internal_error" | "not_found" | "large_files_unavailable" | "upload_incomplete" | "no_text_layer";
         /**
          * @description One field-level problem inside a `Problem.errors` list.
          * @example {

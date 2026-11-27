@@ -1613,6 +1613,7 @@ components:
         - not_found
         - large_files_unavailable
         - upload_incomplete
+        - no_text_layer
       examples: [file_too_large]
     FieldError:
       description: One field-level problem inside a `Problem.errors` list.

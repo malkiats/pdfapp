@@ -37,6 +37,7 @@ class ErrorCode(StrEnum):
     not_found = "not_found"
     large_files_unavailable = "large_files_unavailable"
     upload_incomplete = "upload_incomplete"
+    no_text_layer = "no_text_layer"
 
 
 class FieldError(BaseModel):
