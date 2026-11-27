@@ -25,7 +25,8 @@ class ToolInput:
     # Handlers that build large outputs incrementally stop once they pass this.
     max_output_bytes: int = 4_400_000
     groq_api_key: str | None = None
-    groq_model: str = "llama-3.3-70b-versatile"
+    groq_model: str = "openai/gpt-oss-120b"
+    groq_vision_model: str = "qwen/qwen3.8-27b"
 
 
 @dataclass

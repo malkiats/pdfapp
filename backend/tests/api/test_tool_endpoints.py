@@ -157,9 +157,8 @@ async def test_compare_pdf_reports_differences(client: httpx.AsyncClient) -> Non
         ("word-to-pdf", [PDF], {}, {}, 404, "not_found"),
         ("summarize-pdf", [PDF], {}, {}, 400, "validation_error"),  # no consent
         ("summarize-pdf", [PDF], {}, {"ai_consent": "true"}, 503, "ai_unavailable"),  # no key
-        # A scan without OCR: reported as its own code before the AI provider is called.
-        ("summarize-pdf", [make_textless_pdf()], {}, {"ai_consent": "true"}, 422, "no_text_layer"),
-        ("ask-pdf", [make_textless_pdf()], {"question": "Why?"}, {"ai_consent": "true"}, 422, "no_text_layer"),
+        # A scan needs the vision model, so without a key it fails before rendering pages.
+        ("summarize-pdf", [make_textless_pdf()], {}, {"ai_consent": "true"}, 503, "ai_unavailable"),
         (
             "compare-webpages",
             [],

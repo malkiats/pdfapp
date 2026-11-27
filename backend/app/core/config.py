@@ -122,8 +122,12 @@ class Settings(BaseSettings):
         description="Groq API key for AI features. Optional in Phase 1 (coming-soon tools only).",
     )
     groq_model: str = Field(
-        default="llama-3.3-70b-versatile",
+        default="openai/gpt-oss-120b",
         description="Groq chat model used by the AI tools.",
+    )
+    groq_vision_model: str = Field(
+        default="qwen/qwen3.8-27b",
+        description="Groq vision model that reads the text of scanned PDFs for the AI tools.",
     )
     limits: LimitsSettings = Field(default_factory=LimitsSettings)
     rate_limit: RateLimitSettings = Field(default_factory=RateLimitSettings)

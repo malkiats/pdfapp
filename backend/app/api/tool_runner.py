@@ -138,6 +138,7 @@ def build_tool_input(
         max_output_bytes=max_output_bytes,
         groq_api_key=settings.groq_api_key.get_secret_value() if settings.groq_api_key else None,
         groq_model=settings.groq_model,
+        groq_vision_model=settings.groq_vision_model,
     )
 
 

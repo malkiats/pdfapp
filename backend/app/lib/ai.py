@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+import base64
+import io
 import json
+import re
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 
+import pypdfium2 as pdfium
 from pdfapp.backend.app.core.errors import ApiError
 from pdfapp.backend.app.core.logging import get_logger
 from pdfapp.backend.app.lib.common import (
@@ -26,14 +32,41 @@ _GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 # Keeps requests inside Groq's per-minute token limits on the free tier.
 _MAX_INPUT_CHARS = 24_000
 _TIMEOUT = 60
+_THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
+# Scanned PDFs: pages read by the vision model. Kept small so that reading the
+# pages (in parallel) plus the answer fit inside Vercel's 60 s function limit.
+_OCR_MAX_PAGES = 8
+_OCR_WORKERS = 4
+_OCR_MAX_SIDE = 1600
+_OCR_TIMEOUT = 25
+
+
+def _require_key(inp: ToolInput) -> str:
+    if not inp.groq_api_key:
+        raise ApiError(503, "ai_unavailable", detail="AI tools are not configured on this server.")
+    return inp.groq_api_key
 
 
 def _complete(inp: ToolInput, system: str, user: str, max_tokens: int = 1500) -> str:
-    if not inp.groq_api_key:
-        raise ApiError(503, "ai_unavailable", detail="AI tools are not configured on this server.")
+    return _chat(
+        inp,
+        inp.groq_model,
+        [{"role": "system", "content": system}, {"role": "user", "content": user}],
+        max_tokens,
+    )
+
+
+def _chat(
+    inp: ToolInput,
+    model: str,
+    messages: list[dict[str, Any]],
+    max_tokens: int,
+    timeout: float = _TIMEOUT,
+) -> str:
+    api_key = _require_key(inp)
     payload = {
-        "model": inp.groq_model,
-        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+        "model": model,
+        "messages": messages,
         "temperature": 0.2,
         "max_tokens": max_tokens,
     }
@@ -41,14 +74,14 @@ def _complete(inp: ToolInput, system: str, user: str, max_tokens: int = 1500) ->
         _GROQ_URL,
         data=json.dumps(payload).encode(),
         headers={
-            "Authorization": f"Bearer {inp.groq_api_key}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
             "User-Agent": "doc-tools/1.0",
         },
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=_TIMEOUT) as resp:  # noqa: S310
+        with urllib.request.urlopen(request, timeout=timeout) as resp:  # noqa: S310
             data = json.load(resp)
     except urllib.error.HTTPError as e:
         log.warning("ai_provider_error", status=e.code)
@@ -62,11 +95,75 @@ def _complete(inp: ToolInput, system: str, user: str, max_tokens: int = 1500) ->
             504, "processing_timeout", detail="The AI provider did not respond in time."
         ) from e
     try:
-        return str(data["choices"][0]["message"]["content"]).strip()
+        content = str(data["choices"][0]["message"]["content"])
     except (KeyError, IndexError, TypeError) as e:
         raise ApiError(
             502, "ai_unavailable", detail="The AI provider returned an empty answer."
         ) from e
+    # Reasoning models may prefix their answer with a <think> block.
+    return _THINK_RE.sub("", content).strip()
+
+
+def _page_images(data: bytes) -> tuple[list[bytes], bool]:
+    """Renders the first pages of a PDF as JPEGs for the vision model."""
+    try:
+        doc = pdfium.PdfDocument(data)
+    except pdfium.PdfiumError as e:
+        raise ApiError(422, "invalid_file", detail="The PDF is not valid.") from e
+    try:
+        total = len(doc)
+        images = []
+        for i in range(min(total, _OCR_MAX_PAGES)):
+            width, height = doc.get_page_size(i)
+            # Fit the longest side to _OCR_MAX_SIDE px: readable text, small upload.
+            scale = min(_OCR_MAX_SIDE / max(width, height, 1), 200 / 72)
+            page = doc[i]
+            image = page.render(scale=scale).to_pil().convert("RGB")
+            page.close()
+            buf = io.BytesIO()
+            image.save(buf, "JPEG", quality=80)
+            images.append(buf.getvalue())
+        return images, total > _OCR_MAX_PAGES
+    finally:
+        doc.close()
+
+
+def _read_page(inp: ToolInput, image: bytes) -> str:
+    url = "data:image/jpeg;base64," + base64.b64encode(image).decode()
+    text = _chat(
+        inp,
+        inp.groq_vision_model,
+        [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Transcribe all text on this page exactly, in reading order. "
+                        "Keep headings, lists and table rows on their own lines. Output only "
+                        "the text. If the page has no text, output nothing.",
+                    },
+                    {"type": "image_url", "image_url": {"url": url}},
+                ],
+            }
+        ],
+        max_tokens=4000,
+        timeout=_OCR_TIMEOUT,
+    )
+    return text
+
+
+def _ocr_text(inp: ToolInput, data: bytes) -> str:
+    """Reads a scanned PDF with the vision model (the user has consented to sending it)."""
+    _require_key(inp)  # fail fast, before rendering anything
+    images, cut = _page_images(data)
+    with ThreadPoolExecutor(max_workers=_OCR_WORKERS) as pool:
+        pages = list(pool.map(lambda img: _read_page(inp, img), images))
+    log.info("ai_ocr", pages=len(images))
+    text = "\n\n".join(f"[Page {i}]\n{t}" for i, t in enumerate(pages, 1) if t.strip())
+    if text and cut:
+        text += f"\n\n(Only the first {_OCR_MAX_PAGES} pages of this scanned document were read.)"
+    return text
 
 
 def _clip(text: str) -> tuple[str, bool]:
@@ -81,10 +178,13 @@ def _document_text(inp: ToolInput) -> str:
         if data.startswith(b"%PDF"):
             text = pdf_text(read_pdf(data, inp))
             if not text.strip():
+                # A scan: no text layer, so read the page images instead.
+                text = _ocr_text(inp, data)
+            if not text.strip():
                 raise ApiError(
                     422,
                     "no_text_layer",
-                    detail="This PDF has no selectable text (it may be a scan). Run OCR first.",
+                    detail="No readable text was found in this PDF.",
                 )
             return text
         return data.decode("utf-8", errors="replace")
