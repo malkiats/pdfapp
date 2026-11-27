@@ -23,7 +23,8 @@ Never claim: "zero retention", "never touches a disk", or "no one can ever acces
 | Uploaded files, text, results | Function memory and `/tmp/<random>` | Deleted in `finally` within the request. Crash leftovers are removed when an instance starts (> 5 min old). |
 | Original filenames | Browser only | Discarded by the API. Results use a generic name (`<slug>-result.<ext>`). |
 | Compared URLs and fetched pages | Request memory | Not stored, not logged |
-| AI prompts and outputs | Request memory, and Groq | Not stored or logged by us. Groq retention per its terms (§3). |
+| AI prompts and outputs | Request memory, and Groq | Not stored or logged by us. Groq retention per its terms (§3). For a scanned PDF with no text layer, JPEG images of up to the first 8 pages are sent to Groq's vision model. |
+| Large files (> ~4 MB) | Cloudflare R2 | Inputs deleted when processing starts; result deleted after download (client `deleteUpload`). Opportunistic sweep after ≥ 1 h; R2 lifecycle rule deletes leftovers after 1 day. |
 | Logs | Vercel logs | Per plan retention, allowlisted fields only (§4) |
 | Accounts, payments | — | Not before Phase 7 |
 
@@ -32,7 +33,8 @@ Never claim: "zero retention", "never touches a disk", or "no one can ever acces
 | Processor | Receives | Limitation to disclose |
 |---|---|---|
 | **Vercel** | All requests, including file bytes, plus IP, user agent and URL paths | Processes content in transit, and keeps request logs per its plan. We never put content in URLs or logs. |
-| **Groq** (AI tools only, opt-in per request) | The text sent for that tool, plus the prompt | Groq's retention and training terms apply. Verify them and enable zero-retention where offered before launch. Shown in the consent notice. |
+| **Groq** (AI tools only, opt-in per request) | The text sent for that tool, plus the prompt; page images for scanned PDFs | Groq's retention and training terms apply. Verify them and enable zero-retention where offered before launch. Shown in the consent notice. |
+| **Cloudflare R2** (large-file flow only) | File bytes and results, via presigned URLs | Stored only until deleted (see §2); lifecycle rule is the backstop. |
 | **Target websites** (comparison) | Our server's request to the URL the user gave | The target site logs our fetch |
 
 ## 4. Logging rules (`core/logging.py`)

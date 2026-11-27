@@ -15,7 +15,7 @@ const reasons = [
   {
     icon: Lock,
     title: "Isolated processing",
-    text: "Documents are opened only inside sandboxed workers that cannot reach the internet.",
+    text: "Each request is processed on its own and its files are deleted when it ends. Nothing is shared between tasks.",
   },
   {
     icon: Gauge,

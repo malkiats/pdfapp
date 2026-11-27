@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { Container } from "@/components/ui/Container";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { siteConfig } from "@/lib/config/site";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
   title: "Pricing - Completely Free & Open Source",
-  description: "All PDF tools are completely free to use with no limits. No account required. Open source and privacy-first.",
+  description: "All PDF tools are completely free to use. No account required. Open source and privacy-first.",
   path: "/pricing",
 });
 
@@ -14,13 +15,13 @@ export default function PricingPage() {
     <>
       <PageHeader
         title="Completely Free & Open Source"
-        description="All tools are free to use with no limits. No account required. Privacy-first and open source."
+        description="All tools are free to use. No account required. Privacy-first and open source."
       />
       <Container className="py-12">
         <div className="mb-8 rounded-lg border border-border bg-surface px-4 py-3 text-sm">
           <h2 className="font-semibold mb-2">✨ 100% Free & Open Source</h2>
           <p className="text-muted">
-            Every tool is completely free to use, with no limits, no hidden charges, and no account required.
+            Every tool is completely free to use, with no paywalls, no hidden charges, and no account required.
             The entire codebase is open source on GitHub, so you can self-host it or contribute improvements.
           </p>
         </div>
@@ -35,12 +36,12 @@ export default function PricingPage() {
               <p className="text-sm text-muted">Start using tools immediately without creating an account or providing any personal information.</p>
             </div>
             <div>
-              <h3 className="font-semibold mb-2">No File Size Limits</h3>
-              <p className="text-sm text-muted">Process files of any size. Our generous limits grow as you need them.</p>
+              <h3 className="font-semibold mb-2">Generous Limits</h3>
+              <p className="text-sm text-muted">Files up to 100 MB and documents up to 2,000 pages, with no daily caps.</p>
             </div>
             <div>
               <h3 className="font-semibold mb-2">Privacy First</h3>
-              <p className="text-sm text-muted">Files are deleted automatically after processing. We never store or use your data for training.</p>
+              <p className="text-sm text-muted">Files are deleted automatically after processing. We never keep your files or use them to train AI models.</p>
             </div>
             <div>
               <h3 className="font-semibold mb-2">Open Source</h3>
@@ -68,7 +69,7 @@ export default function PricingPage() {
             <Link href="/tools" className="inline-flex min-h-11 items-center rounded-lg bg-accent px-6 font-medium text-accent-foreground">
               Explore All Tools
             </Link>
-            <a href="https://github.com" className="inline-flex min-h-11 items-center font-medium text-accent underline underline-offset-4">
+            <a href={siteConfig.sourceUrl} className="inline-flex min-h-11 items-center font-medium text-accent underline underline-offset-4">
               View on GitHub
             </a>
           </div>

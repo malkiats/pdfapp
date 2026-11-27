@@ -15,7 +15,7 @@ export default function SubscriptionPage() {
     <>
       <PageHeader
         title="No Account Needed"
-        description="All tools are completely free and open source. No account, no limits, no charges ever."
+        description="All tools are completely free and open source. No account, no paywalls, no charges ever."
       />
       <Container className="py-12">
         <div className="mb-8 rounded-lg border border-accent bg-accent/5 px-6 py-4">

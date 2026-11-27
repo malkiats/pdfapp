@@ -40,7 +40,7 @@ export default function AboutPage() {
             </li>
             <li>
               <strong>No ads, no tracking.</strong> We don&apos;t run analytics or advertising trackers on this site.
-              No data collection, no selling user information.
+              We never sell or share your information. See our <Link href="/privacy">Privacy Policy</Link>.
             </li>
           </ul>
           <h2>All tools available now</h2>

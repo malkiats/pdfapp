@@ -4,8 +4,20 @@
  */
 import { categoryHref, getCategoryById } from "@/lib/config/categories";
 
+const SITE_NAME = "Pagewell";
+
+function publicEnv(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+const ownerName = publicEnv(process.env.NEXT_PUBLIC_OWNER_NAME);
+const rawEmail = publicEnv(process.env.NEXT_PUBLIC_CONTACT_EMAIL);
+// Only a plain address is used in mailto: links.
+const contactEmail = rawEmail && /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(rawEmail) ? rawEmail : undefined;
+
 export const siteConfig = {
-  name: "Pagewell",
+  name: SITE_NAME,
   tagline: "Free Online PDF & Document Tools",
   /** The one default <title> (home page and fallback). */
   defaultTitle: "Pagewell: Free Online PDF & Document Tools - No Account Required",
@@ -14,13 +26,21 @@ export const siteConfig = {
   /** AI provider named in consent and privacy copy (docs/privacy.md §3). */
   aiProviderName: "Groq",
   /**
-   * PLACEHOLDER addresses (example.com). Replacing them with real mailboxes is
-   * a launch blocker; the UI tags them as placeholders while this is true.
+   * Who runs the site and the one inbox for support, privacy and security.
+   * Set in the hosting environment (Vercel → Environment Variables), not in this
+   * public repository: NEXT_PUBLIC_OWNER_NAME and NEXT_PUBLIC_CONTACT_EMAIL.
+   * Inlined at build time, so redeploy after changing them. While unset, the UI
+   * shows example.com addresses tagged "Placeholder".
    */
-  contactIsPlaceholder: true,
-  contactEmail: "hello@example.com",
-  securityEmail: "security@example.com",
-  privacyEmail: "privacy@example.com",
+  ownerName: ownerName ?? `the ${SITE_NAME} maintainer`,
+  contactIsPlaceholder: !contactEmail,
+  contactEmail: contactEmail ?? "hello@example.com",
+  securityEmail: contactEmail ?? "security@example.com",
+  privacyEmail: contactEmail ?? "privacy@example.com",
+  /** Public source code (the site is open source). */
+  sourceUrl: "https://github.com/malkiats/pdfapp",
+  /** Date shown on the Privacy Policy and Terms; update it whenever either changes. */
+  legalUpdated: "27 November 2026",
 } as const;
 
 function categoryLink(id: "ai" | "compare"): string {

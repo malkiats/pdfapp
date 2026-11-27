@@ -6,12 +6,12 @@ export const privacySteps = [
   {
     icon: Upload,
     title: "Encrypted upload, straight to processing",
-    text: "Your browser sends files over HTTPS directly to our processing service. Files never pass through the website host.",
+    text: "Your browser sends files over HTTPS directly to our processing service, not through the website itself.",
   },
   {
     icon: Cpu,
     title: "Processed in isolation",
-    text: "Each task runs in a sandboxed worker with no internet access, separate from every other task.",
+    text: "Each request is processed on its own, in memory and a private temporary folder, with strict time and size limits.",
   },
   {
     icon: Trash2,

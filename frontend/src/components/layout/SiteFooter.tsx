@@ -49,7 +49,7 @@ export function SiteFooter() {
             </p>
             <ul className="mt-3 space-y-0 text-sm md:space-y-2">
               <li>
-                <a href="https://github.com" className="inline-flex min-h-11 items-center text-muted hover:text-fg md:min-h-0">
+                <a href={siteConfig.sourceUrl} className="inline-flex min-h-11 items-center text-muted hover:text-fg md:min-h-0">
                   GitHub
                 </a>
               </li>

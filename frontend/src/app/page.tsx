@@ -78,7 +78,7 @@ export default function HomePage() {
       <Section
         id="open-source"
         title="100% Free & Open Source"
-        description="No payments, no accounts, no limits. Ever."
+        description="No payments, no accounts, no paywalls. Ever."
         muted
       >
         <div className="grid gap-6 md:grid-cols-3">

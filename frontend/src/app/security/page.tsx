@@ -32,12 +32,19 @@ export default function SecurityPage() {
             Most files are sent with your request and the result comes back in the response. Large files are uploaded
             and downloaded through short-lived signed links that only your browser receives. Your uploaded files are
             deleted right after processing, and the result shortly after you download it. Automatic cleanup removes
-            anything left within 1 hour, with a 1-day backstop.
+            anything left over, and a storage rule deletes any leftovers after at most 24 hours.
           </p>
           <h2>Isolated processing</h2>
           <p>
-            Documents are opened only by sandboxed workers with strict time and memory limits. The workers that handle
-            your files have no route to the internet, and each task runs in a fresh process.
+            Each request is handled on its own by our processing service, with strict time, size and page limits. Files
+            are kept in memory and in a private temporary folder that is deleted when the request ends, whether it
+            succeeded or failed. Nothing from one request is available to another.
+          </p>
+          <h2>AI tools</h2>
+          <p>
+            AI tools send your content to our AI provider, {siteConfig.aiProviderName}, only after you tick the consent
+            box for that request. For scanned PDFs, images of the first pages are sent so the text can be read. We
+            don&apos;t store prompts or answers. See the <Link href="/privacy">Privacy Policy</Link> for details.
           </p>
           <h2>This website</h2>
           <p>
