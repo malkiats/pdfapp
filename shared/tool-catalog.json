@@ -41,7 +41,7 @@
           },
           {
             "question": "Do I need an account?",
-            "answer": "No. You can use this tool without signing up, within the free plan limits."
+            "answer": "No. You can use this tool without signing up."
           },
           {
             "question": "Are my files stored?",
@@ -361,7 +361,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "available",
+      "status": "coming_soon",
       "phase": 3,
       "requires_ai_consent": false,
       "seo": {
@@ -426,7 +426,7 @@
           },
           {
             "question": "Do I need an account?",
-            "answer": "No. You can use this tool without signing up, within the free plan limits."
+            "answer": "No. You can use this tool without signing up."
           },
           {
             "question": "Are my files stored?",
@@ -479,7 +479,7 @@
       "slug": "word-to-pdf",
       "category": "convert-to-pdf",
       "title": "Word to PDF",
-      "description": "Convert Word documents (DOCX) into PDF with layout and fonts preserved.",
+      "description": "Convert Word documents (DOCX) into PDF, keeping headings, paragraphs, lists and tables.",
       "icon": "file-text",
       "input_kinds": [
         "file"
@@ -496,7 +496,7 @@
       "requires_ai_consent": false,
       "seo": {
         "title": "Word to PDF: convert DOCX to PDF online",
-        "description": "Convert Word documents to PDF that look the same everywhere. Macros are never run; files are deleted after download.",
+        "description": "Convert Word documents to PDF with their text, headings, lists and tables. Macros are never run; files are deleted after download.",
         "keywords": [
           "word to pdf",
           "docx to pdf",
@@ -509,8 +509,8 @@
             "answer": "Modern .docx files. Macro-enabled (.docm) and legacy binary (.doc) files are not accepted, for security reasons."
           },
           {
-            "question": "Will my fonts look the same?",
-            "answer": "Common fonts convert faithfully. Rare fonts that are not embedded in the document may be replaced by a similar font."
+            "question": "Will the layout look exactly the same?",
+            "answer": "Not exactly. The text, headings, lists and tables are kept and laid out cleanly on A4 pages, but images, custom fonts, colours and exact positioning are not copied."
           },
           {
             "question": "Are my files stored?",
@@ -523,7 +523,7 @@
       "slug": "powerpoint-to-pdf",
       "category": "convert-to-pdf",
       "title": "PowerPoint to PDF",
-      "description": "Convert PowerPoint presentations (PPTX) into PDF slides.",
+      "description": "Convert PowerPoint presentations (PPTX) into PDF, one page per slide.",
       "icon": "presentation",
       "input_kinds": [
         "file"
@@ -540,7 +540,7 @@
       "requires_ai_consent": false,
       "seo": {
         "title": "PowerPoint to PDF: convert PPTX slides to PDF",
-        "description": "Turn PowerPoint presentations into PDF for easy sharing and printing. Macros never run; files are deleted automatically.",
+        "description": "Turn PowerPoint presentations into a PDF with one page per slide: titles, bullet points, tables and speaker notes. Macros never run; files are deleted automatically.",
         "keywords": [
           "powerpoint to pdf",
           "pptx to pdf",
@@ -549,8 +549,8 @@
         ],
         "faq": [
           {
-            "question": "Are animations kept?",
-            "answer": "No. A PDF is static, so each slide becomes one page in its final state."
+            "question": "What is included from each slide?",
+            "answer": "Each slide becomes one page with its title, text, bullet points, tables and speaker notes. Images, charts, backgrounds and animations are not included."
           },
           {
             "question": "Are my files stored?",
@@ -563,7 +563,7 @@
       "slug": "excel-to-pdf",
       "category": "convert-to-pdf",
       "title": "Excel to PDF",
-      "description": "Convert Excel spreadsheets (XLSX) into a printable PDF.",
+      "description": "Convert Excel spreadsheets (XLSX) into a printable PDF table.",
       "icon": "sheet",
       "input_kinds": [
         "file"
@@ -580,7 +580,7 @@
       "requires_ai_consent": false,
       "seo": {
         "title": "Excel to PDF: convert XLSX spreadsheets to PDF",
-        "description": "Turn Excel workbooks into clean, printable PDFs. Macros never run; your spreadsheet is deleted after download.",
+        "description": "Turn Excel workbooks into clean, printable PDF tables, one section per sheet. Macros never run; your spreadsheet is deleted after download.",
         "keywords": [
           "excel to pdf",
           "xlsx to pdf",
@@ -589,8 +589,8 @@
         ],
         "faq": [
           {
-            "question": "How are wide sheets handled?",
-            "answer": "The print area and page setup saved in the workbook are used. Very wide sheets may span several pages."
+            "question": "How are large sheets handled?",
+            "answer": "Every sheet becomes a table on landscape pages, with the header row repeated on each page. Cell values are shown (not formulas or formatting); up to 5,000 rows and 30 columns per sheet."
           },
           {
             "question": "Are my files stored?",
@@ -620,7 +620,7 @@
       "requires_ai_consent": false,
       "seo": {
         "title": "HTML to PDF: convert HTML files to PDF online",
-        "description": "Convert an HTML file to a PDF with its styles applied. Scripts are not executed; files are deleted after download.",
+        "description": "Convert an HTML file to a clean PDF of its text, headings and lists. Scripts are not executed; files are deleted after download.",
         "keywords": [
           "html to pdf",
           "convert html to pdf",
@@ -630,7 +630,7 @@
         "faq": [
           {
             "question": "Is JavaScript executed?",
-            "answer": "No. The page is rendered from its HTML and CSS only, so content built by scripts will not appear."
+            "answer": "No. The text, headings and lists in the HTML are converted; scripts are not run and styles (CSS) and images are not applied."
           },
           {
             "question": "Are my files stored?",
@@ -740,7 +740,7 @@
       "requires_ai_consent": false,
       "seo": {
         "title": "PDF to Word: convert PDF to editable DOCX",
-        "description": "Turn PDFs into editable Word documents. Works best on text-based PDFs; files are deleted automatically after download.",
+        "description": "Turn PDFs into editable Word documents with the text in reading order, one page per PDF page. Works on text-based PDFs; files are deleted automatically after download.",
         "keywords": [
           "pdf to word",
           "pdf to docx",
@@ -750,11 +750,11 @@
         "faq": [
           {
             "question": "Will the layout be identical?",
-            "answer": "Simple layouts convert well. Complex designs with many columns, tables or floating images may need touch-ups in Word."
+            "answer": "No. You get the text in reading order, one Word page per PDF page, ready to edit. Columns, tables, images and fonts are not recreated."
           },
           {
             "question": "Does it work on scanned PDFs?",
-            "answer": "Scanned PDFs contain images, not text. Run OCR PDF first to get editable text."
+            "answer": "Scanned PDFs contain images, not text. Use Scanned document to text first, then paste the text where you need it."
           },
           {
             "question": "Are my files stored?",
@@ -767,7 +767,7 @@
       "slug": "pdf-to-powerpoint",
       "category": "convert-from-pdf",
       "title": "PDF to PowerPoint",
-      "description": "Turn PDF pages into PowerPoint slides (PPTX) you can edit.",
+      "description": "Turn PDF pages into PowerPoint slides (PPTX) with editable text.",
       "icon": "presentation",
       "input_kinds": [
         "file"
@@ -784,7 +784,7 @@
       "requires_ai_consent": false,
       "seo": {
         "title": "PDF to PowerPoint: convert PDF to PPTX slides",
-        "description": "Convert a PDF into a PowerPoint presentation, one slide per page. Private, with automatic file deletion after download.",
+        "description": "Convert a PDF into a PowerPoint presentation, one slide per page, with the page text as editable slide text. Files are deleted automatically after download.",
         "keywords": [
           "pdf to powerpoint",
           "pdf to pptx",
@@ -793,8 +793,8 @@
         ],
         "faq": [
           {
-            "question": "Is every element editable?",
-            "answer": "Text boxes are editable where the PDF contains real text. Some graphics may be placed as images."
+            "question": "What ends up on each slide?",
+            "answer": "Each PDF page becomes one slide: its first line is the title and the rest of the text is an editable text box. Images and graphics are not copied."
           },
           {
             "question": "Are my files stored?",
@@ -824,7 +824,7 @@
       "requires_ai_consent": false,
       "seo": {
         "title": "PDF to Excel: extract PDF tables to XLSX",
-        "description": "Pull tables out of PDFs into editable Excel sheets. Best on text-based PDFs; files are deleted automatically after download.",
+        "description": "Pull tables out of PDFs into editable Excel sheets, one sheet per page. Best on text-based PDFs; files are deleted automatically after download.",
         "keywords": [
           "pdf to excel",
           "pdf to xlsx",
@@ -834,7 +834,7 @@
         "faq": [
           {
             "question": "How accurate is table detection?",
-            "answer": "Tables with clear rows and columns convert well. Merged cells or tables without ruling lines may need manual checks."
+            "answer": "Tables with clear rows and columns convert well. Merged cells or tables without ruling lines may need manual checks. Pages without a table give their text, one line per row."
           },
           {
             "question": "Are my files stored?",
@@ -1060,7 +1060,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "available",
+      "status": "coming_soon",
       "phase": 6,
       "requires_ai_consent": false,
       "seo": {
@@ -1225,7 +1225,7 @@
       "max_inputs": 1,
       "options_schema": null,
       "tier_required": "free",
-      "status": "available",
+      "status": "coming_soon",
       "phase": 6,
       "requires_ai_consent": false,
       "seo": {
@@ -1293,7 +1293,7 @@
       "slug": "image-to-text",
       "category": "ocr",
       "title": "Image to text",
-      "description": "Extract text from images with on-server OCR, ready to copy.",
+      "description": "Extract text from images with AI text recognition, ready to copy.",
       "icon": "scan-text",
       "input_kinds": [
         "file"
@@ -1310,10 +1310,10 @@
       "tier_required": "free",
       "status": "available",
       "phase": 3,
-      "requires_ai_consent": false,
+      "requires_ai_consent": true,
       "seo": {
         "title": "Image to text: extract text from images online (OCR)",
-        "description": "Copy text out of JPG, PNG, WebP or TIFF images with OCR that runs on our servers, not an AI provider. Images are deleted automatically.",
+        "description": "Copy text out of JPG, PNG, WebP or TIFF images with AI text recognition. Sent to our AI provider only with your consent; images are deleted automatically.",
         "keywords": [
           "image to text",
           "ocr online",
@@ -1324,11 +1324,11 @@
         "faq": [
           {
             "question": "Is the text recognition done by an AI service?",
-            "answer": "No. Recognition runs on our own servers with the open-source Tesseract engine. Your file is not sent to an outside AI provider."
+            "answer": "Yes. Text is read by a vision model from our AI provider, Groq. Your file is sent to Groq only after you tick the consent box for that request, and we don't store the result. See our Privacy Policy."
           },
           {
             "question": "Do I need an account?",
-            "answer": "No. You can use this tool without signing up, within the free plan limits."
+            "answer": "No. You can use this tool without signing up."
           },
           {
             "question": "Are my files stored?",
@@ -1341,7 +1341,7 @@
       "slug": "jpg-to-text",
       "category": "ocr",
       "title": "JPG to text",
-      "description": "Extract the text from JPG photos and scans with OCR.",
+      "description": "Extract the text from JPG photos and scans with AI text recognition.",
       "icon": "scan-text",
       "input_kinds": [
         "file"
@@ -1355,10 +1355,10 @@
       "tier_required": "free",
       "status": "available",
       "phase": 3,
-      "requires_ai_consent": false,
+      "requires_ai_consent": true,
       "seo": {
         "title": "JPG to text: convert JPEG images to editable text",
-        "description": "Extract text from JPG photos and scans with on-server OCR. Copy or download the result; images are deleted automatically.",
+        "description": "Extract text from JPG photos and scans with AI text recognition, only with your consent. Copy or download the result; images are deleted automatically.",
         "keywords": [
           "jpg to text",
           "jpeg to text",
@@ -1368,7 +1368,7 @@
         "faq": [
           {
             "question": "Is the text recognition done by an AI service?",
-            "answer": "No. Recognition runs on our own servers with the open-source Tesseract engine. Your file is not sent to an outside AI provider."
+            "answer": "Yes. Text is read by a vision model from our AI provider, Groq. Your file is sent to Groq only after you tick the consent box for that request, and we don't store the result. See our Privacy Policy."
           },
           {
             "question": "Are my files stored?",
@@ -1381,7 +1381,7 @@
       "slug": "png-to-text",
       "category": "ocr",
       "title": "PNG to text",
-      "description": "Extract the text from PNG images and screenshots with OCR.",
+      "description": "Extract the text from PNG images and screenshots with AI text recognition.",
       "icon": "scan-text",
       "input_kinds": [
         "file"
@@ -1395,10 +1395,10 @@
       "tier_required": "free",
       "status": "available",
       "phase": 3,
-      "requires_ai_consent": false,
+      "requires_ai_consent": true,
       "seo": {
         "title": "PNG to text: extract text from PNG images",
-        "description": "Turn the text in PNG images into editable text with on-server OCR. Free and private; images are deleted automatically.",
+        "description": "Turn the text in PNG images into editable text with AI text recognition, only with your consent. Free; images are deleted automatically.",
         "keywords": [
           "png to text",
           "ocr png",
@@ -1408,7 +1408,7 @@
         "faq": [
           {
             "question": "Is the text recognition done by an AI service?",
-            "answer": "No. Recognition runs on our own servers with the open-source Tesseract engine. Your file is not sent to an outside AI provider."
+            "answer": "Yes. Text is read by a vision model from our AI provider, Groq. Your file is sent to Groq only after you tick the consent box for that request, and we don't store the result. See our Privacy Policy."
           },
           {
             "question": "Are my files stored?",
@@ -1437,10 +1437,10 @@
       "tier_required": "free",
       "status": "available",
       "phase": 3,
-      "requires_ai_consent": false,
+      "requires_ai_consent": true,
       "seo": {
         "title": "Screenshot to text: copy text from screenshots",
-        "description": "Extract text from screenshots of apps, chats and web pages with on-server OCR. Screenshots are deleted automatically after use.",
+        "description": "Extract text from screenshots of apps, chats and web pages with AI text recognition, only with your consent. Screenshots are deleted automatically after use.",
         "keywords": [
           "screenshot to text",
           "copy text from screenshot",
@@ -1450,7 +1450,7 @@
         "faq": [
           {
             "question": "Is the text recognition done by an AI service?",
-            "answer": "No. Recognition runs on our own servers with the open-source Tesseract engine. Your file is not sent to an outside AI provider."
+            "answer": "Yes. Text is read by a vision model from our AI provider, Groq. Your file is sent to Groq only after you tick the consent box for that request, and we don't store the result. See our Privacy Policy."
           },
           {
             "question": "Which screenshots work best?",
@@ -1485,10 +1485,10 @@
       "tier_required": "free",
       "status": "available",
       "phase": 3,
-      "requires_ai_consent": false,
+      "requires_ai_consent": true,
       "seo": {
         "title": "Scanned document to text: OCR for scans and PDFs",
-        "description": "Turn scanned documents and image-only PDFs into editable text with on-server OCR. Files are deleted automatically after use.",
+        "description": "Turn scanned documents and image-only PDFs into editable text with AI text recognition, only with your consent. Files are deleted automatically after use.",
         "keywords": [
           "scanned document to text",
           "scan to text",
@@ -1498,11 +1498,11 @@
         "faq": [
           {
             "question": "Is the text recognition done by an AI service?",
-            "answer": "No. Recognition runs on our own servers with the open-source Tesseract engine. Your file is not sent to an outside AI provider."
+            "answer": "Yes. Text is read by a vision model from our AI provider, Groq. Your file is sent to Groq only after you tick the consent box for that request, and we don't store the result. See our Privacy Policy."
           },
           {
             "question": "Is there a page limit?",
-            "answer": "Yes. The free plan processes up to 100 pages per document; paid plans allow more."
+            "answer": "Images are read one at a time. For scanned PDFs, the text of the first pages is read; PDFs that already contain text are read in full."
           },
           {
             "question": "Are my files stored?",
@@ -1532,10 +1532,10 @@
       "tier_required": "free",
       "status": "available",
       "phase": 3,
-      "requires_ai_consent": false,
+      "requires_ai_consent": true,
       "seo": {
         "title": "Receipt to text: extract text from receipts",
-        "description": "Get the text from receipt photos or PDF invoices with on-server OCR, ready to copy into your expenses. Files are deleted automatically.",
+        "description": "Get the text from receipt photos or PDF invoices with AI text recognition, ready to copy into your expenses. Only with your consent; files are deleted automatically.",
         "keywords": [
           "receipt to text",
           "receipt ocr",
@@ -1545,7 +1545,7 @@
         "faq": [
           {
             "question": "Is the text recognition done by an AI service?",
-            "answer": "No. Recognition runs on our own servers with the open-source Tesseract engine. Your file is not sent to an outside AI provider."
+            "answer": "Yes. Text is read by a vision model from our AI provider, Groq. Your file is sent to Groq only after you tick the consent box for that request, and we don't store the result. See our Privacy Policy."
           },
           {
             "question": "Are totals and dates detected automatically?",
@@ -1562,7 +1562,7 @@
       "slug": "handwriting-to-text",
       "category": "ocr",
       "title": "Handwriting to text",
-      "description": "Best-effort recognition of neat handwriting in images and scans.",
+      "description": "Recognise neat handwriting in images and scans.",
       "icon": "pen-line",
       "input_kinds": [
         "file"
@@ -1579,10 +1579,10 @@
       "tier_required": "free",
       "status": "available",
       "phase": 3,
-      "requires_ai_consent": false,
+      "requires_ai_consent": true,
       "seo": {
         "title": "Handwriting to text: convert handwritten notes",
-        "description": "Turn neat handwritten notes into editable text with on-server OCR. Results depend on legibility; files are deleted automatically.",
+        "description": "Turn handwritten notes into editable text with AI text recognition, only with your consent. Results depend on legibility; files are deleted automatically.",
         "keywords": [
           "handwriting to text",
           "handwriting ocr",
@@ -1592,7 +1592,7 @@
         "faq": [
           {
             "question": "Is the text recognition done by an AI service?",
-            "answer": "No. Recognition runs on our own servers with the open-source Tesseract engine. Your file is not sent to an outside AI provider."
+            "answer": "Yes. Text is read by a vision model from our AI provider, Groq. Your file is sent to Groq only after you tick the consent box for that request, and we don't store the result. See our Privacy Policy."
           },
           {
             "question": "How accurate is handwriting recognition?",

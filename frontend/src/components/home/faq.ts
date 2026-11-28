@@ -10,7 +10,7 @@ export const homeFaq: ToolFaqItem[] = [
   {
     question: "Can anyone else see my documents?",
     answer:
-      "Each task gets a random identifier and a private access token that only your browser holds. Files are processed in isolated workers, and we never store your original file names.",
+      "No. Your files travel over HTTPS to our processing service, are used only for your request, and are then deleted automatically. Large-file downloads use short-lived private links that only your browser receives. We never store your original file names, and our logs never contain file contents.",
   },
   {
     question: "Do I need an account or pay anything?",
@@ -24,11 +24,11 @@ export const homeFaq: ToolFaqItem[] = [
   {
     question: "Are the AI tools private?",
     answer:
-      `AI tools send the content you choose to our AI provider (${siteConfig.aiProviderName}) only after you tick a consent box, every time. The provider's own retention terms apply to what it receives, and our copy is deleted on the same schedule as every other file.`,
+      `AI tools and image to text tools send the content you choose to our AI provider (${siteConfig.aiProviderName}) only after you tick a consent box, every time. The provider's own retention terms apply to what it receives, and our copy is deleted on the same schedule as every other file.`,
   },
   {
     question: "What file size limits are there?",
     answer:
-      "No artificial limits. Process files as large as your browser can handle. Processed results are delivered instantly.",
+      "Files up to about 4 MB are processed straight away. Larger files, up to 100 MB each, are uploaded to temporary storage first and deleted after processing. PDFs can have up to 100 pages (2,000 for large uploads), and AI tools read the first part of very long documents.",
   },
 ];

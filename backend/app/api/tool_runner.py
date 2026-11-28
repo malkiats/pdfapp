@@ -6,6 +6,8 @@ options shape) and call the same handler, so they live here once.
 
 from __future__ import annotations
 
+import io
+import zipfile
 from collections.abc import Callable
 from typing import Any, Final
 
@@ -35,18 +37,49 @@ def sniff_mime(data: bytes) -> str:
         return "image/webp"
     if data[:4] in (b"II*\x00", b"MM\x00*"):
         return "image/tiff"
+    if data.startswith(b"PK\x03\x04"):
+        return _sniff_ooxml(data)
     if b"\x00" not in data[:4096]:
         try:
-            data[:65536].decode("utf-8")
-            return "text/plain"
+            head = data[:65536].decode("utf-8")
         except UnicodeDecodeError:
             pass
+        else:
+            start = head.lstrip("﻿ \t\r\n")[:64].lower()
+            if start.startswith(("<!doctype html", "<html")):
+                return "text/html"
+            return "text/plain"
     return "application/octet-stream"
+
+
+# Office Open XML documents are ZIP files; the main part's folder names the format.
+_OOXML_PARTS: Final = {
+    "word/document.xml": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "ppt/presentation.xml": (
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    ),
+    "xl/workbook.xml": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
+
+
+def _sniff_ooxml(data: bytes) -> str:
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            names = set(archive.namelist())  # reads only the central directory
+    except (zipfile.BadZipFile, ValueError):
+        return "application/octet-stream"
+    if "[Content_Types].xml" in names:
+        for part, mime in _OOXML_PARTS.items():
+            if part in names:
+                return mime
+    return "application/zip"
 
 
 def accepted(mime: str, accepts: list[str]) -> bool:
     allowed = {_NORMALIZED_TYPES.get(a, a) for a in accepts}
-    return _NORMALIZED_TYPES.get(mime, mime) in allowed
+    mime = _NORMALIZED_TYPES.get(mime, mime)
+    # HTML is text too: text tools keep accepting it.
+    return mime in allowed or (mime == "text/html" and "text/plain" in allowed)
 
 
 def bad(code: str, message: str, pointer: str, status: int = 400) -> ApiError:
@@ -139,6 +172,8 @@ def build_tool_input(
         groq_api_key=settings.groq_api_key.get_secret_value() if settings.groq_api_key else None,
         groq_model=settings.groq_model,
         groq_vision_model=settings.groq_vision_model,
+        groq_max_input_chars=settings.groq_max_input_chars,
+        groq_ocr_max_pages=settings.groq_ocr_max_pages,
     )
 
 

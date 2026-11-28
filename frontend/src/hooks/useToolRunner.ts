@@ -29,6 +29,9 @@ export interface ToolRunResult {
   /** Present for inline text results, which are also shown on the page. */
   text?: string;
   remote: boolean;
+  /** Inline flow only: total input size and result size, for "reduced from … to …". */
+  inputBytes?: number;
+  outputBytes?: number;
 }
 
 /**
@@ -167,7 +170,13 @@ export function useToolRunner(slug: string, limits: ApiLimits) {
           const out = await runInline({ ...request, slug, signal });
           if (signal.aborted) throw new ToolRunError("cancelled");
           const filename = downloadName ?? out.filename;
-          const next: ToolRunResult = { url: URL.createObjectURL(out.blob), filename, remote: false };
+          const next: ToolRunResult = {
+            url: URL.createObjectURL(out.blob),
+            filename,
+            remote: false,
+            inputBytes: total,
+            outputBytes: out.blob.size,
+          };
           if (out.contentType.startsWith("text/")) {
             next.text = await out.blob.text();
             if (signal.aborted) {

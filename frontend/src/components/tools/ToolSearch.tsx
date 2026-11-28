@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
-import { useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { searchTools } from "@/lib/search";
 import type { ToolSummary } from "@/types/catalog";
 
@@ -34,6 +34,11 @@ export function ToolSearch({
   const statusId = useId();
 
   const results = useMemo(() => searchTools(tools, query, limit), [tools, query, limit]);
+
+  // Arriving from the "/" shortcut on a page without a search box (/tools#search).
+  useEffect(() => {
+    if (window.location.hash === "#search") inputRef.current?.focus();
+  }, []);
   const hasQuery = query.trim().length > 0;
 
   const links = () => Array.from(listRef.current?.querySelectorAll<HTMLAnchorElement>("a[data-result]") ?? []);
@@ -95,6 +100,8 @@ export function ToolSearch({
           <input
             ref={inputRef}
             id={inputId}
+            data-site-search=""
+            aria-keyshortcuts="/"
             type="search"
             autoComplete="off"
             spellCheck={false}

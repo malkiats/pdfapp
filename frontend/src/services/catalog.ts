@@ -4,6 +4,7 @@
  */
 import { tools } from "@/lib/catalog";
 import { categories, categoryName, getCategoryById, type CategoryInfo } from "@/lib/config/categories";
+import { NEXT_STEPS } from "@/lib/config/journeys";
 import type { Tool, ToolSummary } from "@/types/catalog";
 
 /** Tools featured on the homepage, in this order (slugs missing from the catalog are skipped). */
@@ -15,8 +16,8 @@ export const POPULAR_TOOL_SLUGS = [
   "word-to-pdf",
   "jpg-to-pdf",
   "pdf-to-jpg",
-  "ocr-pdf",
   "image-to-text",
+  "sign-pdf",
   "summarize-pdf",
   "protect-pdf",
   "compare-webpages",
@@ -34,6 +35,14 @@ export function getToolBySlug(slug: string): Tool | undefined {
 
 export function getToolsInCategory(categoryId: string): Tool[] {
   return tools.filter((t) => t.category === categoryId);
+}
+
+/** Hand-picked follow-up tools for a tool (available ones only, at most `limit`). */
+export function getNextSteps(slug: string, limit = 3): Tool[] {
+  return (NEXT_STEPS[slug] ?? [])
+    .map((s) => bySlug.get(s))
+    .filter((t): t is Tool => t !== undefined && t.status === "available" && t.slug !== slug)
+    .slice(0, limit);
 }
 
 export function getPopularTools(): Tool[] {

@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertCircle, CheckCircle2, Download, Loader2, ShieldCheck, UploadCloud } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { errorMessage } from "@/lib/api/errors";
 import { retentionSentence } from "@/lib/config/retention";
 
@@ -30,6 +30,25 @@ export interface ProcessingStatusProps {
   retryLabel?: string;
   /** Move keyboard focus to the error when a request fails. */
   focusOnError?: boolean;
+  /** Short facts rotated while processing (visual only; not announced). */
+  tips?: readonly string[];
+}
+
+const TIP_EVERY_MS = 5000;
+
+/** One tip at a time, changing every few seconds. Hidden from screen readers so the live region stays quiet. */
+function RotatingTip({ tips }: { tips: readonly string[] }) {
+  const [index, setIndex] = useState(() => Math.floor(Math.random() * tips.length));
+  useEffect(() => {
+    const timer = setInterval(() => setIndex((i) => (i + 1) % tips.length), TIP_EVERY_MS);
+    return () => clearInterval(timer);
+  }, [tips.length]);
+  return (
+    <p aria-hidden="true" className="mt-3 border-t border-border pt-3 text-sm text-muted">
+      <span className="font-medium text-fg">Did you know? </span>
+      {tips[index % tips.length]}
+    </p>
+  );
 }
 
 /** Overall upload progress in whole percent. */
@@ -85,6 +104,7 @@ export function ProcessingStatus({
   onCancel,
   retryLabel = "Try again",
   focusOnError = false,
+  tips,
 }: ProcessingStatusProps) {
   let content: ReactNode = null;
   const alertRef = useRef<HTMLDivElement>(null);
@@ -132,6 +152,7 @@ export function ProcessingStatus({
       content = (
         <Panel tone="neutral" icon={<Loader2 aria-hidden="true" className="size-5 animate-spin text-accent" />} title="Processing">
           <p className="mt-1 text-sm text-muted">Working on it, this typically takes a few seconds.</p>
+          {tips && tips.length > 0 ? <RotatingTip tips={tips} /> : null}
           {state.requestId ? (
             <p className="mt-1 text-xs text-muted">
               Request ID: <code>{state.requestId}</code>

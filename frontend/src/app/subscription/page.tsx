@@ -25,11 +25,11 @@ export default function SubscriptionPage() {
             This is an open-source project created to give everyone access to powerful PDF and document tools.
           </p>
           <div className="flex gap-4 flex-wrap">
-            <Link href="/tools" className="inline-flex min-h-11 items-center rounded-lg bg-accent px-6 font-medium text-accent-foreground">
+            <Link href="/tools" className="inline-flex min-h-11 items-center rounded-lg bg-accent px-6 font-medium text-accent-fg hover:bg-accent-hover">
               Use Tools Now
             </Link>
             <Link href="/pricing" className="inline-flex min-h-11 items-center font-medium text-accent underline underline-offset-4">
-              Learn More
+              Why it&apos;s free
             </Link>
           </div>
         </div>

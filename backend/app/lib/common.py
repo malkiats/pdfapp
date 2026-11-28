@@ -27,6 +27,8 @@ class ToolInput:
     groq_api_key: str | None = None
     groq_model: str = "openai/gpt-oss-120b"
     groq_vision_model: str = "qwen/qwen3.8-27b"
+    groq_max_input_chars: int = 12_000
+    groq_ocr_max_pages: int = 2
 
 
 @dataclass

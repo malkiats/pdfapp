@@ -154,7 +154,8 @@ async def test_compare_pdf_reports_differences(client: httpx.AsyncClient) -> Non
         ("rotate-pdf", [PDF], {"angle": "45"}, {}, 400, "validation_error"),
         ("rotate-pdf", [make_image("PNG")], {}, {}, 400, "unsupported_type"),
         ("merge-pdf", [b"%PDF-broken", PDF], {}, {}, 422, "invalid_file"),
-        ("word-to-pdf", [PDF], {}, {}, 404, "not_found"),
+        ("redact-pdf", [PDF], {}, {}, 404, "not_found"),  # coming soon
+        ("word-to-pdf", [PDF], {}, {}, 400, "unsupported_type"),
         ("summarize-pdf", [PDF], {}, {}, 400, "validation_error"),  # no consent
         ("summarize-pdf", [PDF], {}, {"ai_consent": "true"}, 503, "ai_unavailable"),  # no key
         # A scan needs the vision model, so without a key it fails before rendering pages.

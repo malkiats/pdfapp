@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { SiteFooter } from "@/components/layout/SiteFooter";
+import { KeyboardShortcuts } from "@/components/layout/KeyboardShortcuts";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SkipLink } from "@/components/layout/SkipLink";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="flex min-h-full flex-col">
         <ThemeProvider>
           <SkipLink />
+          <KeyboardShortcuts />
           <SiteHeader />
           <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
             {children}

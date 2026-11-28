@@ -63,9 +63,15 @@ export function SiteFooter() {
             </ul>
           </nav>
         </div>
-        <p className="mt-10 border-t border-border pt-6 text-xs text-muted">
-          {siteConfig.name}. No analytics or advertising trackers run on this site.
-        </p>
+        <div className="mt-10 flex flex-wrap justify-between gap-2 border-t border-border pt-6 text-xs text-muted">
+          <p>{siteConfig.name}. No analytics or advertising trackers run on this site.</p>
+          <p>
+            Works in current Chrome, Edge, Firefox and Safari.{" "}
+            <Link href="/accessibility" className="underline underline-offset-2 hover:text-fg">
+              Accessibility
+            </Link>
+          </p>
+        </div>
       </div>
     </footer>
   );

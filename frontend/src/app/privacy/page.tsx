@@ -28,7 +28,10 @@ export default function PrivacyPolicyPage() {
               Your files are used only to produce the result you asked for. {retentionSentence} We don&apos;t keep
               copies, sell your data or use it to train AI models.
             </li>
-            <li>AI tools send your content to our AI provider, {siteConfig.aiProviderName}, only after you agree to it for that request.</li>
+            <li>
+              AI tools and image to text tools send your content to our AI provider, {siteConfig.aiProviderName}, only
+              after you agree to it for that request.
+            </li>
             <li>We use no cookies for tracking, no analytics and no advertising.</li>
           </ul>
 
@@ -56,7 +59,9 @@ export default function PrivacyPolicyPage() {
           <p>
             The AI tools (such as Summarize, Translate, Ask PDF and PDF to Markdown) send the text of your document, or
             the text you typed, to {siteConfig.aiProviderName} to generate the answer. If a PDF is a scan with no text
-            layer, images of its first pages are sent so that the text can be read. This only happens after you tick
+            layer, images of its first pages are sent so that the text can be read. The image to text tools (such as
+            Image to text, Receipt to text and Handwriting to text) send your image to{" "}
+            {siteConfig.aiProviderName}&apos;s vision model to read the text. This only happens after you tick
             the consent box for that request. We don&apos;t store the prompts or the answers.
           </p>
           <h3>Technical data</h3>

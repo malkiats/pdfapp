@@ -4,6 +4,7 @@ import { homeFaq } from "@/components/home/faq";
 import { Hero } from "@/components/home/Hero";
 import { PrivacyLimits, PrivacySteps } from "@/components/home/PrivacySteps";
 import { Section } from "@/components/home/Section";
+import { StartHere } from "@/components/home/StartHere";
 import { WhyChooseUs } from "@/components/home/WhyChooseUs";
 import { CategoryCard } from "@/components/tools/CategoryCard";
 import { ToolGrid } from "@/components/tools/ToolGrid";
@@ -32,10 +33,15 @@ export default function HomePage() {
       <JsonLd data={[organizationJsonLd(), websiteJsonLd(), faqJsonLd(homeFaq)]} />
       <Hero tools={summaries} />
 
+      <Section id="start" title="What do you want to do?" description="Pick a task to jump straight to the right tool.">
+        <StartHere />
+      </Section>
+
       <Section
         id="popular"
         title="Popular tools"
-        description="The everyday document tasks people need most."
+        description="Everyday document tools, picked by us."
+        muted
         action={
           <Link href="/tools" className={linkClass}>
             All tools <ArrowRight aria-hidden="true" className="size-4" />
@@ -45,7 +51,7 @@ export default function HomePage() {
         <ToolGrid tools={popular} badgeVariant="subtle" />
       </Section>
 
-      <Section id="categories" title="Tool categories" description="Find the right tool by what you want to do." muted>
+      <Section id="categories" title="Tool categories" description="Find the right tool by what you want to do.">
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {categories.map((category) => (
             <li key={category.id}>
@@ -99,8 +105,8 @@ export default function HomePage() {
           </div>
         </div>
         <div className="mt-8 text-center">
-          <Link href="/pricing" className="inline-flex min-h-11 items-center rounded-lg bg-accent px-6 font-medium text-accent-foreground">
-            Learn More
+          <Link href="/pricing" className="inline-flex min-h-11 items-center rounded-lg bg-accent px-6 font-medium text-accent-fg hover:bg-accent-hover">
+            Why it&apos;s free
           </Link>
         </div>
       </Section>

@@ -49,15 +49,20 @@ function categoryLink(id: "ai" | "compare"): string {
   return categoryHref(category);
 }
 
-/** Primary nav. Hrefs are derived from the category config/catalog (tested in tests/unit/routes.test.ts). */
+/** Primary nav: quick links to the most common tasks, then AI tools and guides. */
 export const mainNav: readonly { href: string; label: string }[] = [
+  { href: "/tools/merge-pdf", label: "Merge PDF" },
+  { href: "/tools/compress-pdf", label: "Compress PDF" },
+  { href: "/tools/pdf-to-word", label: "PDF to Word" },
   { href: categoryLink("ai"), label: "AI Tools" },
-  { href: "/tools/compare-webpages", label: "Compare Webpages" },
-  { href: "/about", label: "About" },
+  { href: "/guides", label: "Guides" },
 ];
 
 export const companyLinks = [
   { href: "/about", label: "About" },
+  { href: "/guides", label: "Guides" },
+  { href: "/developers", label: "Developers (API)" },
+  { href: "/accessibility", label: "Accessibility" },
   { href: "/security", label: "Security" },
   { href: "/privacy", label: "Privacy Policy" },
   { href: "/terms", label: "Terms" },

@@ -129,6 +129,20 @@ class Settings(BaseSettings):
         default="qwen/qwen3.8-27b",
         description="Groq vision model that reads the text of scanned PDFs for the AI tools.",
     )
+    # Defaults fit Groq's free tier (8,000 tokens per minute per model, shared by
+    # every visitor). Raise them after moving to a paid Groq plan.
+    groq_max_input_chars: int = Field(
+        default=12_000,
+        ge=1_000,
+        le=500_000,
+        description="Characters of document text sent to the AI tools (the rest is cut).",
+    )
+    groq_ocr_max_pages: int = Field(
+        default=2,
+        ge=1,
+        le=50,
+        description="Scanned PDF pages read by the vision model per request (~1,800 tokens each).",
+    )
     limits: LimitsSettings = Field(default_factory=LimitsSettings)
     rate_limit: RateLimitSettings = Field(default_factory=RateLimitSettings)
 

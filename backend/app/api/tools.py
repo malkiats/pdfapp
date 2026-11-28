@@ -20,7 +20,7 @@ from pdfapp.backend.app.api.tool_runner import (
 )
 from pdfapp.backend.app.core.errors import ApiError
 from pdfapp.backend.app.core.logging import get_logger
-from pdfapp.backend.app.lib import ai, pdf_ops, web
+from pdfapp.backend.app.lib import ai, office, pdf_ops, web
 from pdfapp.backend.app.lib.common import result_too_large
 from pdfapp.backend.app.lib.multipart import parse_multipart
 from starlette.concurrency import run_in_threadpool
@@ -33,6 +33,8 @@ TOOL_CACHE_CONTROL: Final = "no-store"
 # Vercel Functions cannot return bodies above 4.5 MB.
 MAX_RESULT_BYTES: Final = 4_400_000
 
+# Not listed (catalog status "coming_soon" until they really work): ocr-pdf, pdf-forms,
+# redact-pdf. Their pdf_ops stubs returned the input unchanged.
 HANDLERS: Final[dict[str, Handler]] = {
     # organize
     "merge-pdf": pdf_ops.merge_pdf,
@@ -44,29 +46,26 @@ HANDLERS: Final[dict[str, Handler]] = {
     # optimize
     "compress-pdf": pdf_ops.compress_pdf,
     "repair-pdf": pdf_ops.repair_pdf,
-    "ocr-pdf": pdf_ops.ocr_pdf,
     # convert
     "jpg-to-pdf": lambda i: pdf_ops.images_to_pdf(i, "jpg-to-pdf"),
     "png-to-pdf": lambda i: pdf_ops.images_to_pdf(i, "png-to-pdf"),
     "pdf-to-jpg": lambda i: pdf_ops.pdf_to_images(i, "jpg", "pdf-to-jpg"),
     "pdf-to-png": lambda i: pdf_ops.pdf_to_images(i, "png", "pdf-to-png"),
     # document conversions
-    "word-to-pdf": pdf_ops.word_to_pdf,
-    "powerpoint-to-pdf": pdf_ops.powerpoint_to_pdf,
-    "excel-to-pdf": pdf_ops.excel_to_pdf,
-    "html-to-pdf": pdf_ops.html_to_pdf,
-    "pdf-to-word": pdf_ops.pdf_to_word,
-    "pdf-to-powerpoint": pdf_ops.pdf_to_powerpoint,
-    "pdf-to-excel": pdf_ops.pdf_to_excel,
+    "word-to-pdf": office.word_to_pdf,
+    "powerpoint-to-pdf": office.powerpoint_to_pdf,
+    "excel-to-pdf": office.excel_to_pdf,
+    "html-to-pdf": office.html_to_pdf,
+    "pdf-to-word": office.pdf_to_word,
+    "pdf-to-powerpoint": office.pdf_to_powerpoint,
+    "pdf-to-excel": office.pdf_to_excel,
     # edit
     "rotate-pdf": pdf_ops.rotate_pdf,
     "add-page-numbers": pdf_ops.add_page_numbers,
     "add-watermark": pdf_ops.add_watermark,
     "crop-pdf": pdf_ops.crop_pdf,
     "edit-pdf": pdf_ops.edit_pdf,
-    "pdf-forms": pdf_ops.pdf_forms,
     "sign-pdf": pdf_ops.sign_pdf,
-    "redact-pdf": pdf_ops.redact_pdf,
     # security
     "unlock-pdf": pdf_ops.unlock_pdf,
     "protect-pdf": pdf_ops.protect_pdf,
@@ -81,14 +80,14 @@ HANDLERS: Final[dict[str, Handler]] = {
     "ask-pdf": ai.ask_pdf,
     # compare
     "compare-webpages": web.compare_webpages,
-    # OCR-based image tools
-    "image-to-text": pdf_ops.image_to_text,
-    "jpg-to-text": pdf_ops.jpg_to_text,
-    "png-to-text": pdf_ops.png_to_text,
-    "screenshot-to-text": pdf_ops.screenshot_to_text,
-    "scanned-document-to-text": pdf_ops.scanned_document_to_text,
-    "receipt-to-text": pdf_ops.receipt_to_text,
-    "handwriting-to-text": pdf_ops.handwriting_to_text,
+    # Image to text (AI text recognition, with consent)
+    "image-to-text": ai.image_to_text,
+    "jpg-to-text": ai.jpg_to_text,
+    "png-to-text": ai.png_to_text,
+    "screenshot-to-text": ai.screenshot_to_text,
+    "scanned-document-to-text": ai.scanned_document_to_text,
+    "receipt-to-text": ai.receipt_to_text,
+    "handwriting-to-text": ai.handwriting_to_text,
 }
 
 

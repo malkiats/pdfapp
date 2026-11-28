@@ -1,10 +1,12 @@
 "use client";
 
-import { Bot, Copy, Link2, RotateCcw, Type } from "lucide-react";
+import { ArrowRight, Bot, Copy, Link2, RotateCcw, Share2, TrendingDown, Type } from "lucide-react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useId, useRef, useState } from "react";
 import { useApiLimits, useToolRunner } from "@/hooks/useToolRunner";
 import { effectiveCaps, INLINE_FALLBACK_BYTES } from "@/lib/api/uploads";
+import { PROCESSING_TIPS } from "@/lib/config/journeys";
 import { siteConfig } from "@/lib/config/site";
 import { formatBytes } from "@/lib/format";
 import type { ToolStatus } from "@/types/catalog";
@@ -30,6 +32,19 @@ export interface ToolWorkspaceProps {
   /** Per-file cap shown to the user (plan display value; the server enforces). */
   maxFileBytes: number;
   requiresAiConsent?: boolean;
+  /** Hand-picked follow-up tools shown after a successful run. */
+  nextSteps?: readonly { slug: string; title: string; description: string; href: string }[];
+}
+
+/** "Reduced from 2.4 MB to 900 KB (62% smaller)" for tools whose point is a smaller file. */
+const SIZE_TOOLS = new Set(["compress-pdf"]);
+
+function sizeChange(inputBytes: number, outputBytes: number): string {
+  if (outputBytes >= inputBytes) {
+    return `This PDF was already well optimised: the result is ${formatBytes(outputBytes)} (the original was ${formatBytes(inputBytes)}).`;
+  }
+  const saved = Math.round((1 - outputBytes / inputBytes) * 100);
+  return `Reduced from ${formatBytes(inputBytes)} to ${formatBytes(outputBytes)} (${saved}% smaller).`;
 }
 
 /** Inline-flow cap used until the server limits are known. */
@@ -44,7 +59,7 @@ const fieldClass =
  * through the upload flow, and shows the result or error.
  */
 export function ToolWorkspace(props: ToolWorkspaceProps) {
-  const { toolSlug, title, status, inputKinds, accepts, minInputs, maxInputs, maxFileBytes, requiresAiConsent } =
+  const { toolSlug, title, status, inputKinds, accepts, minInputs, maxInputs, maxFileBytes, requiresAiConsent, nextSteps } =
     props;
   const comingSoon = status !== "available";
   const hasFile = inputKinds.includes("file");
@@ -66,6 +81,7 @@ export function ToolWorkspace(props: ToolWorkspaceProps) {
   const [text, setText] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState<string | null>(null);
   const [formKey, setFormKey] = useState(0);
   const [pageWorkspaceFile, setPageWorkspaceFile] = useState<File | null>(null);
 
@@ -121,6 +137,22 @@ export function ToolWorkspace(props: ToolWorkspaceProps) {
     runner.reset();
     setFormError(null);
     setCopied(false);
+    setShared(null);
+  };
+
+  /** Shares the link to this tool page (never the file or the result). */
+  const shareTool = async () => {
+    const url = `${window.location.origin}${window.location.pathname}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `${title} | ${siteConfig.name}`, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setShared("Link copied");
+    } catch (error) {
+      if ((error as Error)?.name !== "AbortError") setShared("Could not copy the link");
+    }
   };
 
   const handleStartOver = () => {
@@ -295,7 +327,15 @@ export function ToolWorkspace(props: ToolWorkspaceProps) {
         onRetry={handleReset}
         onCancel={runner.cancellable ? runner.cancel : undefined}
         focusOnError
+        tips={PROCESSING_TIPS}
       />
+
+      {state.phase === "succeeded" && SIZE_TOOLS.has(toolSlug) && result?.inputBytes && result.outputBytes ? (
+        <p className="flex items-start gap-2 rounded-xl border border-border bg-surface p-4 text-sm">
+          <TrendingDown aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />
+          {sizeChange(result.inputBytes, result.outputBytes)}
+        </p>
+      ) : null}
 
       {result?.text !== undefined ? (
         <div className="rounded-2xl border border-border bg-surface p-4">
@@ -315,14 +355,50 @@ export function ToolWorkspace(props: ToolWorkspaceProps) {
       ) : null}
 
       {state.phase === "succeeded" ? (
-        <button
-          type="button"
-          onClick={handleStartOver}
-          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border-strong px-4 text-sm hover:bg-surface-strong"
-        >
-          <RotateCcw aria-hidden="true" className="size-4" />
-          Process another
-        </button>
+        <>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={handleStartOver}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border-strong px-4 text-sm hover:bg-surface-strong"
+            >
+              <RotateCcw aria-hidden="true" className="size-4" />
+              Process another
+            </button>
+            <button
+              type="button"
+              onClick={shareTool}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border-strong px-4 text-sm hover:bg-surface-strong"
+            >
+              <Share2 aria-hidden="true" className="size-4" />
+              Share this tool
+            </button>
+            <span role="status" className="text-sm text-muted">
+              {shared}
+            </span>
+          </div>
+          {nextSteps && nextSteps.length > 0 ? (
+            <div className="rounded-2xl border border-border p-4">
+              <p className="text-sm font-semibold">What&apos;s next?</p>
+              <ul className="mt-3 grid gap-2 sm:grid-cols-3">
+                {nextSteps.map((step) => (
+                  <li key={step.slug}>
+                    <Link
+                      href={step.href}
+                      className="group flex h-full min-h-11 flex-col rounded-lg border border-border bg-bg p-3 text-sm hover:border-accent"
+                    >
+                      <span className="inline-flex items-center gap-1 font-medium text-accent">
+                        {step.title}
+                        <ArrowRight aria-hidden="true" className="size-4 transition-transform group-hover:translate-x-0.5" />
+                      </span>
+                      <span className="mt-1 text-xs text-muted">{step.description}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </>
       ) : null}
     </section>
   );

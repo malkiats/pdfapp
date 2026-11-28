@@ -5,6 +5,7 @@ import { Prose } from "@/components/ui/Prose";
 import { retentionSentence } from "@/lib/config/retention";
 import { siteConfig } from "@/lib/config/site";
 import { pageMetadata } from "@/lib/seo";
+import { getAllTools } from "@/services/catalog";
 
 export const metadata = pageMetadata({
   title: "About us",
@@ -13,6 +14,7 @@ export const metadata = pageMetadata({
 });
 
 export default function AboutPage() {
+  const available = getAllTools().filter((t) => t.status === "available").length;
   return (
     <>
       <PageHeader title={`About ${siteConfig.name}`} description="Everyday document tools, built so that your files are not our business." />
@@ -43,10 +45,12 @@ export default function AboutPage() {
               We never sell or share your information. See our <Link href="/privacy">Privacy Policy</Link>.
             </li>
           </ul>
-          <h2>All tools available now</h2>
+          <h2>What you can do today</h2>
           <p>
-            We have launched all 46 tools with full support for PDF operations, document conversions, OCR, AI-powered
-            tools, and more. No staged rollout, no locked features. Everything is ready to use right now, completely free.
+            {available} tools are ready to use right now, for free: organizing and editing PDFs, converting to and from
+            Office formats and images, reading text from images, and AI summaries, translations and answers. A few more,
+            such as redaction and form filling, are marked &quot;Coming soon&quot; until they work properly. We would
+            rather ship fewer tools than ones that don&apos;t do what they say.
           </p>
           <h2>Get in touch</h2>
           <p>

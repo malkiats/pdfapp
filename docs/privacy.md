@@ -33,7 +33,7 @@ Never claim: "zero retention", "never touches a disk", or "no one can ever acces
 | Processor | Receives | Limitation to disclose |
 |---|---|---|
 | **Vercel** | All requests, including file bytes, plus IP, user agent and URL paths | Processes content in transit, and keeps request logs per its plan. We never put content in URLs or logs. |
-| **Groq** (AI tools only, opt-in per request) | The text sent for that tool, plus the prompt; page images for scanned PDFs | Groq's retention and training terms apply. Verify them and enable zero-retention where offered before launch. Shown in the consent notice. |
+| **Groq** (AI and image-to-text tools only, opt-in per request) | The text sent for that tool, plus the prompt; images for the image-to-text tools and for scanned PDFs | Groq's retention and training terms apply. Verify them and enable zero-retention where offered before launch. Shown in the consent notice. |
 | **Cloudflare R2** (large-file flow only) | File bytes and results, via presigned URLs | Stored only until deleted (see §2); lifecycle rule is the backstop. |
 | **Target websites** (comparison) | Our server's request to the URL the user gave | The target site logs our fetch |
 

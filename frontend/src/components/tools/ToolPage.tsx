@@ -10,7 +10,7 @@ import { retentionSentence } from "@/lib/config/retention";
 import { siteConfig } from "@/lib/config/site";
 import { acceptLabel } from "@/lib/format";
 import { breadcrumbJsonLd, faqJsonLd, toolJsonLd } from "@/lib/seo";
-import { getToolsInCategory, hasFileInput, toolHref } from "@/services/catalog";
+import { getNextSteps, getToolsInCategory, hasFileInput, toolHref } from "@/services/catalog";
 import type { Tool } from "@/types/catalog";
 import { ToolGrid } from "./ToolGrid";
 import { PAGE_WORKSPACE_TOOLS } from "./pageWorkspaces";
@@ -124,6 +124,12 @@ export function ToolPage({ tool }: { tool: Tool }) {
               maxInputs={Math.min(tool.max_inputs, maxFilesPerJob)}
               maxFileBytes={maxFileMb * MB}
               requiresAiConsent={(tool as Record<string, unknown>).requires_ai_consent as boolean | undefined}
+              nextSteps={getNextSteps(tool.slug).map((t) => ({
+                slug: t.slug,
+                title: t.title,
+                description: t.description,
+                href: toolHref(t),
+              }))}
             />
           </div>
         </Container>

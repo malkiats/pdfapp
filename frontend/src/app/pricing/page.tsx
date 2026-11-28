@@ -58,6 +58,35 @@ export default function PricingPage() {
           </div>
         </section>
 
+        <section aria-labelledby="commitment-title" className="mt-16 grid gap-8 md:grid-cols-2">
+          <div className="rounded-2xl border border-border p-6">
+            <h2 id="commitment-title" className="text-xl font-semibold">
+              Our free-forever commitment
+            </h2>
+            <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-muted">
+              <li>Every tool on this site is free to use, with no account and no trial period.</li>
+              <li>No ads, no tracking, and we never sell your data.</li>
+              <li>The code stays open source, so the tools can never be locked away.</li>
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-border p-6">
+            <h2 className="text-xl font-semibold">Need more than the free limits?</h2>
+            <p className="mt-4 text-sm text-muted">
+              The hosted site has fair-use limits (file size, pages and requests per minute) so it stays fast for
+              everyone. For heavy or business use, run your own copy: you set the limits and decide where files are
+              processed. Developers can also call the tools from their own scripts.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-4 text-sm font-medium">
+              <a href={siteConfig.sourceUrl} className="text-accent underline underline-offset-4">
+                Self-host from GitHub
+              </a>
+              <Link href="/developers" className="text-accent underline underline-offset-4">
+                API for developers
+              </Link>
+            </div>
+          </div>
+        </section>
+
         <section aria-labelledby="get-started-title" className="mt-16 max-w-3xl rounded-lg border border-border bg-surface p-8">
           <h2 id="get-started-title" className="text-2xl font-bold tracking-tight">
             Get Started
@@ -66,12 +95,12 @@ export default function PricingPage() {
             Everything is free and ready to use now. Check out our tools to see what you can do with PDFs and documents.
           </p>
           <div className="mt-6 flex gap-4">
-            <Link href="/tools" className="inline-flex min-h-11 items-center rounded-lg bg-accent px-6 font-medium text-accent-foreground">
+            <Link href="/tools" className="inline-flex min-h-11 items-center rounded-lg bg-accent px-6 font-medium text-accent-fg hover:bg-accent-hover">
               Explore All Tools
             </Link>
-            <a href={siteConfig.sourceUrl} className="inline-flex min-h-11 items-center font-medium text-accent underline underline-offset-4">
-              View on GitHub
-            </a>
+            <Link href="/guides" className="inline-flex min-h-11 items-center font-medium text-accent underline underline-offset-4">
+              Read the guides
+            </Link>
           </div>
         </section>
       </Container>

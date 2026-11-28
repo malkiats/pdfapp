@@ -24,7 +24,7 @@ export function Hero({ tools }: { tools: ToolSummary[] }) {
             <ToolSearch tools={tools} />
           </div>
           <p className="text-sm text-muted font-medium">
-            {tools.length} professional tools • No sign-up • No paywalls • No tracking
+            {tools.filter((t) => t.status === "available").length} free tools • No sign-up • No paywalls • No tracking
           </p>
         </div>
       </Container>

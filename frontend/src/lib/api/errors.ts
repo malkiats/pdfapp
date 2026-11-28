@@ -19,7 +19,7 @@ const MESSAGES: Record<string, string> = {
   upstream_fetch_failed: "One of the pages could not be fetched.",
   processing_failed: "We could not process this file.",
   no_text_layer:
-    "We could not find any readable text in this PDF. Check that the pages contain text and are not blank or too blurry.",
+    "We could not find any readable text in this file. Check that it contains text and is not blank or too blurry.",
   processing_timeout: "Processing took too long. Try a smaller file or fewer pages.",
   internal_error: "Something went wrong on our side.",
   not_found: "This tool is not available yet.",

@@ -78,12 +78,13 @@ def test_privacy_wording_is_honest(tool: dict[str, Any]) -> None:
         assert claim not in text
     faq_text = " ".join(f["answer"] for f in tool["seo"].get("faq", [])).lower()
     assert "deleted" in faq_text
-    if tool["category"] == "ai":
-        assert tool["requires_ai_consent"] is True
+    # AI tools and image to text (read by a vision model) send content to the AI provider,
+    # only with consent; every other tool must not.
+    uses_ai = tool["category"] in {"ai", "ocr"}
+    assert tool["requires_ai_consent"] is uses_ai
+    if uses_ai:
         assert "ai provider" in faq_text
         assert "consent" in faq_text
-    else:
-        assert tool["requires_ai_consent"] is False
 
 
 def test_pdfa_marked_pending_licensing() -> None:
